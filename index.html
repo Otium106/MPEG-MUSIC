@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 隐写图片音乐播放器</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text: #333333;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;}
+        
+        /* 播放器样式 */
+        .player-zone { text-align: center; margin-bottom: 20px; }
+        #cover-art { 
+            max-width: 100%; 
+            max-height: 300px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: none; 
+            margin: 15px auto; 
+        }
+        .status { font-size: 14px; color: #7f8c8d; margin: 10px 0; min-height: 20px; }
+        audio { width: 100%; margin-top: 10px; }
+
+        /* 列表样式 */
+        .playlist { max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px; }
+        .playlist-item { 
+            padding: 10px; 
+            border-bottom: 1px solid #edf2f7; 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+        }
+        .playlist-item:hover { background-color: #f7fafc; }
+        .playlist-item:last-child { border-bottom: none; }
+        
+        /* 表单样式 */
+        input, button { 
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 12px; 
+            border: 1px solid #cbd5e0; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+        }
+        input:focus { border-color: var(--primary); outline: none; }
+        button { 
+            background-color: var(--primary); 
+            color: white; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #357abd; }
+        button:disabled { background-color: #a0aec0; cursor: not-allowed; }
+        .token-hint { font-size: 12px; color: #a0aec0; margin-top: -5px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🎵 正在播放</h2>
+        <div class="player-zone">
+            <img id="cover-art" src="" alt="音乐封面">
+            <div id="status-msg" class="status">请从下方列表选择歌曲播放</div>
+            <audio id="audio-controls" controls></audio>
+        </div>
+
+        <h2>📂 我的图片歌单</h2>
+        <div id="playlist-container" class="playlist">正在加载歌单...</div>
+    </div>
+
+    <div class="container">
+        <h2>✍️ 随时随地添加新歌</h2>
+        <input type="text" id="new-img-url" placeholder="请粘贴特制图片的网址 (例如带有 mp3 的 jpg 链接)">
+        <input type="password" id="gh-token" placeholder="请输入你的 GitHub Token (仅首次或换设备时需要)">
+        <div class="token-hint">※ Token 会安全地保存在当前设备的浏览器本地，不会上传给第三方。</div>
+        <button id="submit-btn" onclick="uploadToGitHub()">同步保存到 GitHub</button>
+    </div>
+
+    <script>
+        // ================= 配置区域 =================
+        const OWNER = '你的GitHub用户名'; // 👈 修改为你的 GitHub 账号名
+        const REPO = '你的项目仓库名';   // 👈 修改为你的项目仓库名
+        const FILE_PATH = 'images.json'; // 存放链接的配置文件
+        // ============================================
+
+        const JPG_EOI = new Uint8Array([0xFF, 0xD9]);
+        let cachedMp3Url = null;
+
+        // 页面初始化：加载列表并尝试自动读取本地缓存的 Token
+        window.onload = function() {
+            loadPlaylist();
+            const savedToken = localStorage.getItem('gh_music_token');
+            if (savedToken) {
+                document.getElementById('gh-token').placeholder = "🔑 已自动加载本地缓存的 Token";
+            }
+        };
+
+        // 动态加载 GitHub 上的图片歌单
+        async function loadPlaylist() {
+            const container = document.getElementById('playlist-container');
+            try {
+                // 加时间戳防止浏览器强行缓存旧数据
+                const response = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${FILE_PATH}?t=${Date.now()}`);
+                if (!response.ok) throw new Error();
+                const list = await response.json();
+                
+                if (list.length === 0) {
+                    container.innerHTML = '<div style="padding:10px;color:#a0aec0;text-align:center;">歌单空空如也，快去下方添加吧！</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                list.forEach((url, index) => {
+                    // 截取文件名作为显示名称
+                    let fileName = url.substring(url.lastIndexOf('/') + 1);
+                    if(fileName.length > 30) fileName = fileName.substring(0, 27) + '...';
+                    
+                    const item = document.createElement('div');
+                    item.className = 'playlist-item';
+                    item.innerHTML = `<span><strong>#${index + 1}</strong> ${fileName}</span>`;
+                    item.onclick = () => decodeAndPlay(url);
+                    container.appendChild(item);
+                });
+            } catch (err) {
+                container.innerHTML = '<div style="padding:10px;color:#e53e3e;text-align:center;">歌单加载失败，请检查 images.json 是否存在</div>';
+            }
+        }
+
+        // 解析特制图片并播放
+        async function decodeAndPlay(imageUrl) {
+            const statusMsg = document.getElementById('status-msg');
+            const coverArt = document.getElementById('cover-art');
+            const audio = document.getElementById('audio-controls');
+
+            statusMsg.innerText = '正在读取特制图片数据...';
+            statusMsg.style.color = '#4a90e2';
+            audio.pause();
+
+            try {
+                // 抓取图片的二进制流
+                const res = await fetch(imageUrl);
+                if (!res.ok) throw new Error('网络请求失败，请检查图片链接是否失效或是否存在跨域限制');
+                
+                const buffer = await res.arrayBuffer();
+                const totalData = new Uint8Array(buffer);
+
+                // 从后往前寻找 JPG 结束标记 FF D9
+                let eoiIndex = -1;
+                for (let i = totalData.length - 2; i >= 0; i--) {
+                    if (totalData[i] === JPG_EOI[0] && totalData[i+1] === JPG_EOI[1]) {
+                        eoiIndex = i;
+                        break;
+                    }
+                }
+
+                if (eoiIndex === -1) {
+                    throw new Error('未能在图片中提取到歌曲数据！请确保这是使用 cmd 制作的特制图片。');
+                }
+
+                // 切割出 MP3 数据并转换为 Blob URL
+                const mp3Data = totalData.slice(eoiIndex + 2);
+                const mp3Blob = new Blob([mp3Data], { type: 'audio/mpeg' });
+                
+                if (cachedMp3Url) URL.revokeObjectURL(cachedMp3Url); // 释放内存
+                cachedMp3Url = URL.createObjectURL(mp3Blob);
+
+                // 装载封面与音频
+                coverArt.src = imageUrl;
+                coverArt.style.display = 'block';
+                audio.src = cachedMp3Url;
+                
+                statusMsg.innerText = '♪ 歌曲解析成功，开始播放';
+                statusMsg.style.color = '#38a169';
+                audio.play();
+
+            } catch (err) {
+                statusMsg.innerText = err.message;
+                statusMsg.style.color = '#e53e3e';
+                coverArt.style.display = 'none';
+            }
+        }
+
+        // 利用 GitHub API 实现在线更新
+        async function uploadToGitHub() {
+            const urlInput = document.getElementById('new-img-url');
+            const tokenInput = document.getElementById('gh-token');
+            const submitBtn = document.getElementById('submit-btn');
+
+            const newUrl = urlInput.value.trim();
+            let token = tokenInput.value.trim();
+
+            if (!newUrl) return alert('请输入有效的图片网址！');
+
+            // Token 锁存机制
+            if (token) {
+                localStorage.setItem('gh_music_token', token);
+            } else {
+                token = localStorage.getItem('gh_music_token');
+            }
+
+            if (!token) return alert('首次提交请输入你的 GitHub Personal Access Token！');
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = '正在同步至 GitHub...';
+
+            const apiUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
+
+            try {
+                // 1. 获取 GitHub 上 images.json 的最新状态（包括 sha 校验码）
+                const getRes = await fetch(apiUrl, {
+                    headers: { 'Authorization': `token ${token}` }
+                });
+
+                let currentList = [];
+                let sha = '';
+
+                if (getRes.status === 200) {
+                    const fileData = await getRes.status === 200 ? await getRes.json() : null;
+                    sha = fileData.sha;
+                    // 解码 Base64
+                    currentList = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
+                } else if (getRes.status === 401 || getRes.status === 403) {
+                    throw new Error('Token 校验失败，请检查权限是否正确。');
+                }
+
+                // 2. 追加新网址
+                currentList.push(newUrl);
+
+                // 3. 编码并用 PUT 请求推回 GitHub
+                const utf8Btoa = (str) => btoa(unescape(encodeURIComponent(str)));
+                const newContent = utf8Btoa(JSON.stringify(currentList, null, 2));
+
+                const putRes = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: '🎨 看心情添加了一首新图歌',
+                        content: newContent,
+                        sha: sha
+                    })
+                });
+
+                if (putRes.ok) {
+                    alert('🎉 成功保存！GitHub 正在为您部署，请等待约 30 秒后刷新网页。');
+                    urlInput.value = '';
+                    tokenInput.value = '';
+                    loadPlaylist();
+                } else {
+                    throw new Error('GitHub 拒绝了更新请求，请检查设置。');
+                }
+
+            } catch (err) {
+                alert('发生错误: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = '同步保存到 GitHub';
+            }
+        }
+    </script>
+</body>
+</html>
