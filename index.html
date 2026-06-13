@@ -3,173 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram 雲端音樂盒</title>
+    <title>Telegram 雲端音樂盒 PRO</title>
     <style>
+        /* 1. 全域變量與主題切換 (日間/夜間) */
         :root {
-            --bg-color: #f4f7f6;
+            --bg-color: #f1f5f9;
             --card-bg: #ffffff;
             --primary-color: #2481cc;
-            --text-color: #333333;
-            --text-muted: #666666;
-            --border-color: #e0e0e0;
+            --text-color: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #cbd5e1;
+            --player-bg: linear-gradient(135deg, #e0f2fe, #f0fdf4);
+            --item-hover: #f8fafc;
+            --sidebar-bg: #ffffff;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary-color: #38bdf8;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --player-bg: linear-gradient(135deg, #0c4a6e, #064e3b);
+            --item-hover: #334155;
+            --sidebar-bg: #1e293b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.3s, color 0.3s; }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* 讓內容靠左 */
+        }
+
+        /* 頂部導航欄（放置按鈕） */
+        .top-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+        }
+
+        .icon-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
             display: flex; justify-content: center; align-items: center;
-            min-height: 100vh; padding: 20px;
+            font-size: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        .container {
-            width: 100%; max-width: 480px; background: var(--card-bg);
-            border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.05);
-            padding: 24px; border: 1px solid var(--border-color);
+
+        /* 2. 左上角可收起側邊欄 */
+        .sidebar {
+            position: fixed;
+            top: 0; left: -300px; /* 預設隱藏在左側 */
+            width: 280px; height: 100%;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+            z-index: 200;
+            padding: 30px 20px;
+            transition: left 0.3s ease;
         }
-        h1 { font-size: 20px; text-align: center; margin-bottom: 20px; color: var(--primary-color); }
+        .sidebar.open { left: 0; }
         
-        /* Token 輸入框樣式 */
-        .config-section {
-            background: #f9f9f9; padding: 12px; border-radius: 8px;
-            margin-bottom: 20px; border: 1px solid var(--border-color);
+        .sidebar-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 30px;
         }
-        .config-section label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px; }
-        .config-section input { width: 100%; padding: 6px 8px; font-size: 13px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; }
+        .sidebar-title { font-size: 16px; font-weight: bold; color: var(--primary-color); }
         
-        .player-card { text-align: center; background: linear-gradient(135deg, #e0f2fe, #f0fdf4); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        #current-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
-        #current-artist { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+        .config-section label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px; }
+        .config-section input {
+            width: 100%; padding: 10px; font-size: 13px; 
+            border: 1px solid var(--border-color); border-radius: 6px; 
+            outline: none; background: var(--bg-color); color: var(--text-color);
+        }
+
+        /* 側邊欄遮罩 */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); z-index: 150; display: none;
+        }
+        .sidebar-overlay.show { display: block; }
+
+        /* 3. 播放器核心區塊（主體靠左、垂直緊連） */
+        .main-wrapper {
+            width: 100%; max-width: 420px;
+            margin-top: 50px;
+            display: flex; flex-direction: column; gap: 0; /* 讓它們完全相連 */
+        }
+
+        .player-card { 
+            background: var(--player-bg); 
+            padding: 24px; 
+            border-radius: 16px 16px 0 0; /* 只有上方圓角 */
+            border: 1px solid var(--border-color);
+            border-bottom: none; /* 去除與下方列表相交的邊框 */
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        #current-title { font-weight: bold; font-size: 18px; margin-bottom: 6px; }
+        #current-artist { font-size: 14px; color: var(--text-muted); margin-bottom: 16px; }
         audio { width: 100%; margin-top: 8px; }
-        .status-bar { font-size: 12px; color: var(--primary-color); text-align: center; min-height: 18px; margin-bottom: 16px; }
         
-        /* 歌單列表樣式 */
-        .track-list { list-style: none; max-height: 240px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; }
-        .track-item { padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .status-bar { 
+            font-size: 11px; color: var(--primary-color); text-align: center; 
+            padding: 4px 0; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border-color);
+        }
+        
+        /* 4. 緊跟在下方的播放列表 */
+        .track-list { 
+            list-style: none; max-height: 320px; overflow-y: auto; 
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 16px 16px; /* 只有下方圓角 */
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+        }
+        .track-item { 
+            padding: 14px 20px; border-bottom: 1px solid var(--border-color); 
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center; 
+        }
         .track-item:last-child { border-bottom: none; }
-        .track-item:hover { background-color: #f1f5f9; }
-        .track-item.active { background-color: #e0f2fe; color: var(--primary-color); font-weight: bold; }
-        .track-info { display: flex; flex-direction: column; }
+        .track-item:hover { background-color: var(--item-hover); }
+        .track-item.active { background-color: var(--item-hover); color: var(--primary-color); font-weight: bold; }
+        .track-info { display: flex; flex-direction: column; gap: 2px; }
         .track-title { font-size: 14px; }
         .track-artist { font-size: 12px; color: var(--text-muted); }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>TG 雲端音樂盒</h1>
-
-    <div class="config-section">
-        <label for="bot-token">Telegram Bot Token (自動本地加密儲存)</label>
-        <input type="password" id="bot-token" placeholder="請貼入您 `/revoke` 後拿到的新 Token">
+    <div class="top-bar">
+        <button class="icon-btn" id="menu-open-btn" title="打開設置">☰</button>
+        <button class="icon-btn" id="theme-toggle-btn" title="切換主題">🌗</button>
     </div>
 
-    <div class="player-card">
-        <div id="current-title">未選擇歌曲</div>
-        <div id="current-artist">請點擊下方歌單播放</div>
-        <audio id="audio-player" controls></audio>
-    </div>
-
-    <div id="status-bar" class="status-bar">正在載入歌單...</div>
-    <ul id="track-list" class="track-list"></ul>
-</div>
-
-<script>
-    const audioPlayer = document.getElementById('audio-player');
-    const statusBar = document.getElementById('status-bar');
-    const trackListElement = document.getElementById('track-list');
-    const tokenInput = document.getElementById('bot-token');
-    
-    let tracks = [];
-    let currentActiveItem = null;
-
-    // 1. 初始化：自動讀取上一次儲存在瀏覽器裡的 Token
-    if (localStorage.getItem('tg_bot_token')) {
-        tokenInput.value = localStorage.getItem('tg_bot_token');
-    }
-
-    // 當用戶修改輸入框時，同步更新到本地緩存
-    tokenInput.addEventListener('input', (e) => {
-        localStorage.setItem('tg_bot_token', e.target.value.trim());
-    });
-
-    // 2. 異步讀取同目錄下的 txt.json 索引
-    async function loadPlaylist() {
-        try {
-            const response = await fetch('txt.json');
-            if (!response.ok) throw new Error('無法讀取 txt.json，請檢查文件是否存在');
-            tracks = await response.json();
-            renderPlaylist(tracks);
-            statusBar.innerText = `歌單載入成功，共 ${tracks.length} 首歌曲`;
-        } catch (err) {
-            statusBar.innerText = '錯誤: ' + err.message;
-            statusBar.style.color = 'red';
-        }
-    }
-
-    // 3. 渲染歌單 UI
-    function renderPlaylist(playlist) {
-        trackListElement.innerHTML = '';
-        playlist.forEach((track, index) => {
-            const li = document.createElement('li');
-            li.className = 'track-item';
-            li.innerHTML = `
-                <div class="track-info">
-                    <span class="track-title">${track.title}</span>
-                    <span class="track-artist">${track.artist || '未知藝術家'}</span>
-                </div>
-            `;
-            li.addEventListener('click', () => playTrack(track, li));
-            trackListElement.appendChild(li);
-        });
-    }
-
-    // 4. 核心邏輯：用 file_id 動態向 TG 交換真實音訊流網址
-    async function playTrack(track, element) {
-        const token = tokenInput.value.trim();
-        if (!token) {
-            alert('請先在網頁上方輸入您的 Telegram Bot Token！');
-            return;
-        }
-
-        // 切換高亮
-        if (currentActiveItem) currentActiveItem.classList.remove('active');
-        element.classList.add('active');
-        currentActiveItem = element;
-
-        document.getElementById('current-title').innerText = track.title;
-        document.getElementById('current-artist').innerText = track.artist || '未知藝術家';
-        
-        try {
-            statusBar.innerText = `正在請求 Telegram 伺服器解析《${track.title}》...`;
-            statusBar.style.color = '#2481cc';
-
-            // 第一步：問 TG 要真實的 file_path
-            const getFileUrl = `https://api.telegram.org/bot${token}/getFile?file_id=${track.file_id}`;
-            const response = await fetch(getFileUrl);
-            const data = await response.json();
-
-            if (!data.ok) throw new Error(data.description || 'TG 拒絕請求，請檢查 Token 是否有效');
-
-            const filePath = data.result.file_path;
-            
-            // 第二步：動態生成天生允許跨域的官方音訊播放直鏈
-            const finalAudioUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
-
-            // 第三步：直接交給播放器串流播放
-            audioPlayer.src = finalAudioUrl;
-            statusBar.innerText = '♪ 串流通道已建立，開始播放！';
-            audioPlayer.play();
-
-        } catch (err) {
-            statusBar.innerText = '播放失敗: ' + err.message;
-            statusBar.style.color = 'red';
-            audioPlayer.src = '';
-        }
-    }
-
-    // 網頁開啟時自動載入
-    window.addEventListener('DOMContentLoaded', loadPlaylist);
-</script>
-</body>
-</html>
+    <div class="sidebar-overlay"
