@@ -1,287 +1,175 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎨 隐写图片音乐播放器</title>
+    <title>Telegram 雲端音樂盒</title>
     <style>
         :root {
-            --primary: #4a90e2;
-            --bg: #f5f7fa;
+            --bg-color: #f4f7f6;
             --card-bg: #ffffff;
-            --text: #333333;
+            --primary-color: #2481cc;
+            --text-color: #333333;
+            --text-muted: #666666;
+            --border-color: #e0e0e0;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 20px;
         }
         .container {
-            max-width: 600px;
-            width: 100%;
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
+            width: 100%; max-width: 480px; background: var(--card-bg);
+            border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            padding: 24px; border: 1px solid var(--border-color);
         }
-        h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 10px;}
+        h1 { font-size: 20px; text-align: center; margin-bottom: 20px; color: var(--primary-color); }
         
-        /* 播放器样式 */
-        .player-zone { text-align: center; margin-bottom: 20px; }
-        #cover-art { 
-            max-width: 100%; 
-            max-height: 300px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            display: none; 
-            margin: 15px auto; 
+        /* Token 輸入框樣式 */
+        .config-section {
+            background: #f9f9f9; padding: 12px; border-radius: 8px;
+            margin-bottom: 20px; border: 1px solid var(--border-color);
         }
-        .status { font-size: 14px; color: #7f8c8d; margin: 10px 0; min-height: 20px; }
-        audio { width: 100%; margin-top: 10px; }
-
-        /* 列表样式 */
-        .playlist { max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px; }
-        .playlist-item { 
-            padding: 10px; 
-            border-bottom: 1px solid #edf2f7; 
-            cursor: pointer; 
-            display: flex; 
-            justify-content: space-between;
-            align-items: center;
-        }
-        .playlist-item:hover { background-color: #f7fafc; }
-        .playlist-item:last-child { border-bottom: none; }
+        .config-section label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px; }
+        .config-section input { width: 100%; padding: 6px 8px; font-size: 13px; border: 1px solid var(--border-color); border-radius: 4px; outline: none; }
         
-        /* 表单样式 */
-        input, button { 
-            width: 100%; 
-            padding: 10px; 
-            margin-bottom: 12px; 
-            border: 1px solid #cbd5e0; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
-        }
-        input:focus { border-color: var(--primary); outline: none; }
-        button { 
-            background-color: var(--primary); 
-            color: white; 
-            border: none; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: background 0.2s;
-        }
-        button:hover { background-color: #357abd; }
-        button:disabled { background-color: #a0aec0; cursor: not-allowed; }
-        .token-hint { font-size: 12px; color: #a0aec0; margin-top: -5px; margin-bottom: 10px; }
+        .player-card { text-align: center; background: linear-gradient(135deg, #e0f2fe, #f0fdf4); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        #current-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+        #current-artist { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+        audio { width: 100%; margin-top: 8px; }
+        .status-bar { font-size: 12px; color: var(--primary-color); text-align: center; min-height: 18px; margin-bottom: 16px; }
+        
+        /* 歌單列表樣式 */
+        .track-list { list-style: none; max-height: 240px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; }
+        .track-item { padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .track-item:last-child { border-bottom: none; }
+        .track-item:hover { background-color: #f1f5f9; }
+        .track-item.active { background-color: #e0f2fe; color: var(--primary-color); font-weight: bold; }
+        .track-info { display: flex; flex-direction: column; }
+        .track-title { font-size: 14px; }
+        .track-artist { font-size: 12px; color: var(--text-muted); }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>🎵 正在播放</h2>
-        <div class="player-zone">
-            <img id="cover-art" src="" alt="音乐封面">
-            <div id="status-msg" class="status">请从下方列表选择歌曲播放</div>
-            <audio id="audio-controls" controls></audio>
-        </div>
+<div class="container">
+    <h1>TG 雲端音樂盒</h1>
 
-        <h2>📂 我的图片歌单</h2>
-        <div id="playlist-container" class="playlist">正在加载歌单...</div>
+    <div class="config-section">
+        <label for="bot-token">Telegram Bot Token (自動本地加密儲存)</label>
+        <input type="password" id="bot-token" placeholder="請貼入您 `/revoke` 後拿到的新 Token">
     </div>
 
-    <div class="container">
-        <h2>✍️ 随时随地添加新歌</h2>
-        <input type="text" id="new-img-url" placeholder="请粘贴特制图片的网址 (例如带有 mp3 的 jpg 链接)">
-        <input type="password" id="gh-token" placeholder="请输入你的 GitHub Token (仅首次或换设备时需要)">
-        <div class="token-hint">※ Token 会安全地保存在当前设备的浏览器本地，不会上传给第三方。</div>
-        <button id="submit-btn" onclick="uploadToGitHub()">同步保存到 GitHub</button>
+    <div class="player-card">
+        <div id="current-title">未選擇歌曲</div>
+        <div id="current-artist">請點擊下方歌單播放</div>
+        <audio id="audio-player" controls></audio>
     </div>
 
-    <script>
-        // ================= 配置区域 =================
-        const OWNER = 'otium106'; // 👈 检查：必须是你的 GitHub 登录账号名
-        const REPO = 'MPEG-MUSIC';   // 👈 检查：必须是你的项目仓库名
-        const FILE_PATH = 'images.json'; // 存放链接的配置文件
-        // ============================================
+    <div id="status-bar" class="status-bar">正在載入歌單...</div>
+    <ul id="track-list" class="track-list"></ul>
+</div>
 
-        const JPG_EOI = new Uint8Array([0xFF, 0xD9]);
-        let cachedMp3Url = null;
+<script>
+    const audioPlayer = document.getElementById('audio-player');
+    const statusBar = document.getElementById('status-bar');
+    const trackListElement = document.getElementById('track-list');
+    const tokenInput = document.getElementById('bot-token');
+    
+    let tracks = [];
+    let currentActiveItem = null;
 
-        // 页面初始化：加载列表并尝试自动读取本地缓存的 Token
-        window.onload = function() {
-            loadPlaylist();
-            const savedToken = localStorage.getItem('gh_music_token');
-            if (savedToken) {
-                document.getElementById('gh-token').placeholder = "🔑 已自动加载本地缓存的 Token";
-            }
-        };
+    // 1. 初始化：自動讀取上一次儲存在瀏覽器裡的 Token
+    if (localStorage.getItem('tg_bot_token')) {
+        tokenInput.value = localStorage.getItem('tg_bot_token');
+    }
 
-        // 动态加载 GitHub 上的图片歌单
-        async function loadPlaylist() {
-            const container = document.getElementById('playlist-container');
-            try {
-                const response = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${FILE_PATH}?t=${Date.now()}`);
-                if (!response.ok) throw new Error();
-                const list = await response.json();
-                
-                if (list.length === 0) {
-                    container.innerHTML = '<div style="padding:10px;color:#a0aec0;text-align:center;">歌单空空如也，快去下方添加吧！</div>';
-                    return;
-                }
+    // 當用戶修改輸入框時，同步更新到本地緩存
+    tokenInput.addEventListener('input', (e) => {
+        localStorage.setItem('tg_bot_token', e.target.value.trim());
+    });
 
-                container.innerHTML = '';
-                list.forEach((url, index) => {
-                    let fileName = url.substring(url.lastIndexOf('/') + 1);
-                    if(fileName.length > 30) fileName = fileName.substring(0, 27) + '...';
-                    
-                    const item = document.createElement('div');
-                    item.className = 'playlist-item';
-                    item.innerHTML = `<span><strong>#${index + 1}</strong> ${fileName}</span>`;
-                    item.onclick = () => decodeAndPlay(url);
-                    container.appendChild(item);
-                });
-            } catch (err) {
-                container.innerHTML = '<div style="padding:10px;color:#e53e3e;text-align:center;">歌单加载失败，请检查 images.json 是否存在</div>';
-            }
+    // 2. 異步讀取同目錄下的 txt.json 索引
+    async function loadPlaylist() {
+        try {
+            const response = await fetch('txt.json');
+            if (!response.ok) throw new Error('無法讀取 txt.json，請檢查文件是否存在');
+            tracks = await response.json();
+            renderPlaylist(tracks);
+            statusBar.innerText = `歌單載入成功，共 ${tracks.length} 首歌曲`;
+        } catch (err) {
+            statusBar.innerText = '錯誤: ' + err.message;
+            statusBar.style.color = 'red';
+        }
+    }
+
+    // 3. 渲染歌單 UI
+    function renderPlaylist(playlist) {
+        trackListElement.innerHTML = '';
+        playlist.forEach((track, index) => {
+            const li = document.createElement('li');
+            li.className = 'track-item';
+            li.innerHTML = `
+                <div class="track-info">
+                    <span class="track-title">${track.title}</span>
+                    <span class="track-artist">${track.artist || '未知藝術家'}</span>
+                </div>
+            `;
+            li.addEventListener('click', () => playTrack(track, li));
+            trackListElement.appendChild(li);
+        });
+    }
+
+    // 4. 核心邏輯：用 file_id 動態向 TG 交換真實音訊流網址
+    async function playTrack(track, element) {
+        const token = tokenInput.value.trim();
+        if (!token) {
+            alert('請先在網頁上方輸入您的 Telegram Bot Token！');
+            return;
         }
 
-        // 解析特制图片并播放
-        async function decodeAndPlay(imageUrl) {
-            const statusMsg = document.getElementById('status-msg');
-            const coverArt = document.getElementById('cover-art');
-            const audio = document.getElementById('audio-controls');
+        // 切換高亮
+        if (currentActiveItem) currentActiveItem.classList.remove('active');
+        element.classList.add('active');
+        currentActiveItem = element;
 
-            statusMsg.innerText = '正在读取特制图片数据...';
-            statusMsg.style.color = '#4a90e2';
-            audio.pause();
+        document.getElementById('current-title').innerText = track.title;
+        document.getElementById('current-artist').innerText = track.artist || '未知藝術家';
+        
+        try {
+            statusBar.innerText = `正在請求 Telegram 伺服器解析《${track.title}》...`;
+            statusBar.style.color = '#2481cc';
 
-            try {
-                const res = await fetch(imageUrl);
-                if (!res.ok) throw new Error('网络请求失败，请检查图片链接是否失效或是否存在跨域限制');
-                
-                const buffer = await res.arrayBuffer();
-                const totalData = new Uint8Array(buffer);
+            // 第一步：問 TG 要真實的 file_path
+            const getFileUrl = `https://api.telegram.org/bot${token}/getFile?file_id=${track.file_id}`;
+            const response = await fetch(getFileUrl);
+            const data = await response.json();
 
-                let eoiIndex = -1;
-                for (let i = totalData.length - 2; i >= 0; i--) {
-                    if (totalData[i] === JPG_EOI[0] && totalData[i+1] === JPG_EOI[1]) {
-                        eoiIndex = i;
-                        break;
-                    }
-                }
+            if (!data.ok) throw new Error(data.description || 'TG 拒絕請求，請檢查 Token 是否有效');
 
-                if (eoiIndex === -1) {
-                    throw new Error('未能在图片中提取到歌曲数据！请确保这是使用 cmd 制作的特制图片。');
-                }
+            const filePath = data.result.file_path;
+            
+            // 第二步：動態生成天生允許跨域的官方音訊播放直鏈
+            const finalAudioUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
 
-                const mp3Data = totalData.slice(eoiIndex + 2);
-                const mp3Blob = new Blob([mp3Data], { type: 'audio/mpeg' });
-                
-                if (cachedMp3Url) URL.revokeObjectURL(cachedMp3Url);
-                cachedMp3Url = URL.createObjectURL(mp3Blob);
+            // 第三步：直接交給播放器串流播放
+            audioPlayer.src = finalAudioUrl;
+            statusBar.innerText = '♪ 串流通道已建立，開始播放！';
+            audioPlayer.play();
 
-                coverArt.src = imageUrl;
-                coverArt.style.display = 'block';
-                audio.src = cachedMp3Url;
-                
-                statusMsg.innerText = '♪ 歌曲解析成功，开始播放';
-                statusMsg.style.color = '#38a169';
-                audio.play();
-
-            } catch (err) {
-                statusMsg.innerText = err.message;
-                statusMsg.style.color = '#e53e3e';
-                coverArt.style.display = 'none';
-            }
+        } catch (err) {
+            statusBar.innerText = '播放失敗: ' + err.message;
+            statusBar.style.color = 'red';
+            audioPlayer.src = '';
         }
+    }
 
-        // 利用 GitHub API 实现在线更新
-        async function uploadToGitHub() {
-            const urlInput = document.getElementById('new-img-url');
-            const tokenInput = document.getElementById('gh-token');
-            const submitBtn = document.getElementById('submit-btn');
-
-            const newUrl = urlInput.value.trim();
-            let token = tokenInput.value.trim();
-
-            if (!newUrl) return alert('请输入有效的图片网址！');
-
-            if (token) {
-                localStorage.setItem('gh_music_token', token);
-            } else {
-                token = localStorage.getItem('gh_music_token');
-            }
-
-            if (!token) return alert('首次提交请输入你的 GitHub Personal Access Token！');
-
-            submitBtn.disabled = true;
-            submitBtn.innerText = '正在同步至 GitHub...';
-
-            const apiUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
-
-            try {
-                // 1. 获取 GitHub 上 images.json 的最新状态
-                const getRes = await fetch(apiUrl, {
-                    headers: { 'Authorization': `token ${token}` }
-                });
-
-                let currentList = [];
-                let sha = '';
-
-                if (getRes.status === 200) {
-                    const fileData = await getRes.json(); // 👈 修复了原版的条件三目运算死循环漏洞
-                    sha = fileData.sha;
-                    currentList = JSON.parse(decodeURIComponent(escape(atob(fileData.content))));
-                } else if (getRes.status === 401 || getRes.status === 403) {
-                    throw new Error('钥匙(Token)校验失败或无权访问，请检查权限。');
-                } else if (getRes.status === 404) {
-                    throw new Error('未在仓库根目录下找到 images.json 文件，请先去 GitHub 创建它。');
-                }
-
-                // 2. 追加新网址
-                currentList.push(newUrl);
-
-                // 3. 编码并用 PUT 请求推回 GitHub
-                const utf8Btoa = (str) => btoa(unescape(encodeURIComponent(str)));
-                const newContent = utf8Btoa(JSON.stringify(currentList, null, 2));
-
-                const putRes = await fetch(apiUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: '🎨 看心情添加了一首新图歌',
-                        content: newContent,
-                        sha: sha
-                    })
-                });
-
-                if (putRes.ok) {
-                    alert('🎉 成功保存！GitHub 正在为您部署，请等待约 30 秒后刷新网页。');
-                    urlInput.value = '';
-                    tokenInput.value = '';
-                    loadPlaylist();
-                } else {
-                    // 👇 升级：如果还是被拒绝，直接把 GitHub 返回的底层具体错误展示出来
-                    const errorData = await putRes.json();
-                    throw new Error(`状态码 ${putRes.status}: ${errorData.message}`);
-                }
-
-            } catch (err) {
-                alert('发生错误: ' + err.message);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerText = '同步保存到 GitHub';
-            }
-        }
-    </script>
+    // 網頁開啟時自動載入
+    window.addEventListener('DOMContentLoaded', loadPlaylist);
+</script>
 </body>
 </html>
