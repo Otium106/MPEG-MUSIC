@@ -30,20 +30,20 @@
             --sidebar-bg: #1e293b;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.3s, color 0.3s; }
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.2s, color 0.2s; }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             min-height: 100vh;
-            padding: 20px;
+            padding: 80px 20px 20px 20px; /* 頂部留出 80px 空間，絕對不會擋住按鈕 */
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: flex-start; /* 讓內容靠左 */
         }
 
-        /* 頂部導航欄（放置按鈕） */
+        /* 頂部導航欄 (提高 z-index 確保永遠在最上層可點擊) */
         .top-bar {
             position: fixed;
             top: 0; left: 0; right: 0;
@@ -52,30 +52,36 @@
             justify-content: space-between;
             align-items: center;
             padding: 0 20px;
-            z-index: 100;
+            z-index: 999; /* 頂天級別，保證可以被點擊 */
+            pointer-events: none; /* 讓導航欄本體不攔截滑鼠，只讓裡面的按鈕攔截 */
         }
 
         .icon-btn {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             color: var(--text-color);
-            width: 40px; height: 40px;
+            width: 45px; height: 45px;
             border-radius: 50%;
             cursor: pointer;
             display: flex; justify-content: center; align-items: center;
             font-size: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            pointer-events: auto; /* 恢復按鈕的點擊事件 */
+        }
+        .icon-btn:hover {
+            transform: scale(1.05);
+            border-color: var(--primary-color);
         }
 
         /* 2. 左上角可收起側邊欄 */
         .sidebar {
             position: fixed;
-            top: 0; left: -300px; /* 預設隱藏在左側 */
+            top: 0; left: -300px;
             width: 280px; height: 100%;
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--border-color);
             box-shadow: 4px 0 24px rgba(0,0,0,0.15);
-            z-index: 200;
+            z-index: 1000; /* 必須高於頂部欄 */
             padding: 30px 20px;
             transition: left 0.3s ease;
         }
@@ -97,41 +103,57 @@
         /* 側邊欄遮罩 */
         .sidebar-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4); z-index: 150; display: none;
+            background: rgba(0,0,0,0.4); z-index: 950; display: none;
         }
         .sidebar-overlay.show { display: block; }
 
-        /* 3. 播放器核心區塊（主體靠左、垂直緊連） */
+        /* 3. 播放器核心區塊（靠左一體化） */
         .main-wrapper {
-            width: 100%; max-width: 420px;
-            margin-top: 50px;
-            display: flex; flex-direction: column; gap: 0; /* 讓它們完全相連 */
+            width: 100%; 
+            max-width: 400px; /* 固定寬度靠左 */
+            display: flex; 
+            flex-direction: column; 
+            gap: 0; /* 讓氣泡與列表無縫拼接 */
+            z-index: 10;
         }
 
+        /* 播放器氣泡（靠左頂部） */
         .player-card { 
             background: var(--player-bg); 
             padding: 24px; 
-            border-radius: 16px 16px 0 0; /* 只有上方圓角 */
+            border-radius: 16px 16px 0 0; /* 上方圓角 */
             border: 1px solid var(--border-color);
-            border-bottom: none; /* 去除與下方列表相交的邊框 */
+            border-bottom: none;
             text-align: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
         #current-title { font-weight: bold; font-size: 18px; margin-bottom: 6px; }
         #current-artist { font-size: 14px; color: var(--text-muted); margin-bottom: 16px; }
-        audio { width: 100%; margin-top: 8px; }
         
-        .status-bar { 
-            font-size: 11px; color: var(--primary-color); text-align: center; 
-            padding: 4px 0; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border-color);
+        /* 強制型態優化：確保原生網頁播放器撐滿且顯示 */
+        audio { 
+            display: block !important; 
+            width: 100% !important; 
+            margin-top: 12px; 
+            outline: none;
         }
         
-        /* 4. 緊跟在下方的播放列表 */
+        /* 狀態過渡條 */
+        .status-bar { 
+            font-size: 11px; color: var(--primary-color); text-align: center; 
+            padding: 6px 0; background: rgba(0,0,0,0.03); 
+            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+        }
+        
+        /* 4. 緊貼在播放器下方的列表 */
         .track-list { 
-            list-style: none; max-height: 320px; overflow-y: auto; 
+            list-style: none; 
+            max-height: 300px; 
+            overflow-y: auto; 
             background: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 0 0 16px 16px; /* 只有下方圓角 */
+            border-radius: 0 0 16px 16px; /* 下方圓角 */
             box-shadow: 0 8px 24px rgba(0,0,0,0.05);
         }
         .track-item { 
@@ -153,4 +175,157 @@
         <button class="icon-btn" id="theme-toggle-btn" title="切換主題">🌗</button>
     </div>
 
-    <div class="sidebar-overlay"
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">⚙️ 系統核心設置</span>
+            <button class="icon-btn" id="menu-close-btn" style="width:32px; height:32px; font-size:14px;">✕</button>
+        </div>
+        <div class="config-section">
+            <label for="bot-token">Telegram Bot Token</label>
+            <input type="password" id="bot-token" placeholder="請貼入您新申請的 Bot Token">
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="player-card">
+            <div id="current-title">未選擇歌曲</div>
+            <div id="current-artist">請打開左上角選單配置 Token</div>
+            <audio id="audio-player" controls preload="auto"></audio>
+        </div>
+        
+        <div id="status-bar" class="status-bar">正在讀取歌單索引...</div>
+        
+        <ul id="track-list" class="track-list"></ul>
+    </div>
+
+<script>
+    const audioPlayer = document.getElementById('audio-player');
+    const statusBar = document.getElementById('status-bar');
+    const trackListElement = document.getElementById('track-list');
+    const tokenInput = document.getElementById('bot-token');
+    
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const menuOpenBtn = document.getElementById('menu-open-btn');
+    const menuCloseBtn = document.getElementById('menu-close-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    
+    let tracks = [];
+    let currentActiveItem = null;
+
+    // ================= 1. 側邊欄控制邏輯 =================
+    function toggleSidebar(open) {
+        if (open) {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('show');
+        } else {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('show');
+        }
+    }
+    menuOpenBtn.addEventListener('click', () => toggleSidebar(true));
+    menuCloseBtn.addEventListener('click', () => toggleSidebar(false));
+    sidebarOverlay.addEventListener('click', () => toggleSidebar(false));
+
+    // ================= 2. 日夜模式切換邏輯 =================
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    });
+
+    // ================= 3. Token 儲存維護 =================
+    if (localStorage.getItem('tg_bot_token')) {
+        tokenInput.value = localStorage.getItem('tg_bot_token');
+    }
+    tokenInput.addEventListener('input', (e) => {
+        localStorage.setItem('tg_bot_token', e.target.value.trim());
+    });
+
+    // ================= 4. 讀取 txt.json 歌單 =================
+    async function loadPlaylist() {
+        try {
+            const response = await fetch('txt.json');
+            if (!response.ok) throw new Error('txt.json 讀取失敗');
+            tracks = await response.json();
+            renderPlaylist(tracks);
+            statusBar.innerText = `歌單加載成功 (共 ${tracks.length} 首)`;
+        } catch (err) {
+            statusBar.innerText = '系統提示: ' + err.message;
+            statusBar.style.color = '#ef4444';
+        }
+    }
+
+    function renderPlaylist(playlist) {
+        trackListElement.innerHTML = '';
+        playlist.forEach((track, index) => {
+            const li = document.createElement('li');
+            li.className = 'track-item';
+            li.innerHTML = `
+                <div class="track-info">
+                    <span class="track-title">${track.title}</span>
+                    <span class="track-artist">${track.artist || '未知藝術家'}</span>
+                </div>
+            `;
+            li.addEventListener('click', () => playTrack(track, li));
+            trackListElement.appendChild(li);
+        });
+    }
+
+    // ================= 5. 核心：用 file_id 向 TG 交換直鏈 =================
+    async function playTrack(track, element) {
+        const token = tokenInput.value.trim();
+        if (!token) {
+            statusBar.innerText = '⚠️ 請先點擊左上角 ☰ 選單輸入 Bot Token！';
+            statusBar.style.color = '#eab308';
+            toggleSidebar(true); 
+            return;
+        }
+
+        if (currentActiveItem) currentActiveItem.classList.remove('active');
+        element.classList.add('active');
+        currentActiveItem = element;
+
+        document.getElementById('current-title').innerText = track.title;
+        document.getElementById('current-artist').innerText = track.artist || '未知藝術家';
+        
+        try {
+            statusBar.innerText = `正在向 TG 申請《${track.title}》的播放路徑...`;
+            statusBar.style.color = 'var(--primary-color)';
+
+            const getFileUrl = `https://api.telegram.org/bot${token}/getFile?file_id=${track.file_id}&_t=${Date.now()}`;
+            
+            const response = await fetch(getFileUrl, { method: 'GET' });
+            if (!response.ok) throw new Error(`Token 錯誤或過期 (${response.status})`);
+            
+            const data = await response.json();
+            if (!data.ok) throw new Error(data.description || 'Telegram 拒絕解析');
+
+            const filePath = data.result.file_path;
+            const finalAudioUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+
+            // 強制重載流媒體
+            audioPlayer.src = finalAudioUrl;
+            audioPlayer.load(); 
+            statusBar.innerText = '♪ 串流中...';
+            
+            audioPlayer.play().catch(() => {
+                statusBar.innerText = '請點擊播放控制鈕開始聆聽';
+            });
+
+        } catch (err) {
+            statusBar.innerText = '解析失敗: ' + err.message;
+            statusBar.style.color = '#ef4444';
+            audioPlayer.src = '';
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadPlaylist);
+</script>
+</body>
+</html>
