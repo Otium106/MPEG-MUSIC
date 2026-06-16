@@ -269,7 +269,7 @@
             }
         }
 
-        // 核心：本地内嵌缓存播放（Fetch 二进制 Blob 技术）
+// 核心升级版：利用 Audio 原生流式加载，完美过墙解决 CORS 跨域，同时保留进度条
         async function loadAndPlay(fileId, index) {
             const { tgToken } = getConfig();
             const pBg = document.getElementById('pBarBg');
@@ -277,46 +277,67 @@
             const sText = document.getElementById('statusText');
             const audio = document.getElementById('mainAudio');
 
+            // 1. 高亮选中的曲目
             document.querySelectorAll('.playlist-item').forEach((el, i) => {
                 el.classList.toggle('active', i === index);
             });
             
+            // 2. 刷新卡片上的歌名与演唱者
             document.getElementById('currentTitle').textContent = playlist[index].title;
             document.getElementById('currentArtist').textContent = playlist[index].artist;
 
-            if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl); // 销毁老缓存，释放内存
-
+            // 3. 重置并显示进度条
             pBg.style.display = 'block';
             pFill.style.width = '0%';
-            sText.textContent = "请求 Telegram 获取音频下载通道...";
+            sText.textContent = "正在建立 Telegram 临时云端音频通道...";
+
+            // 清理可能存在的旧事件，防止多次点击导致叠加混乱
+            audio.onprogress = null;
 
             try {
+                // 4. 依旧向 Telegram 申请路径
                 const fileRes = await fetch(`https://api.telegram.org/bot${tgToken}/getFile?file_id=${fileId}`);
                 const fileData = await fileRes.json();
-                if (!fileData.ok) throw new Error("Telegram 拒绝提供下载路径");
+                if (!fileData.ok) throw new Error("Telegram 拒绝提供音频路径");
 
                 const realUrl = `https://api.telegram.org/file/bot${tgToken}/${fileData.result.file_path}`;
-                sText.textContent = "通道建立成功！正在将音频下载到本地浏览器缓存...";
+                sText.textContent = "通道已就绪，正在边下边播（流媒体极速启动）...";
 
-                const response = await fetch(realUrl);
-                const reader = response.body.getReader();
-                const contentLength = +response.headers.get('Content-Length');
-                
-                let receivedLength = 0;
-                let chunks = []; 
+                // 5. 【核心修复】不走 Fetch 二进制下载，直接喂给 src，利用浏览器原生通道豁免 CORS 拦截
+                audio.src = realUrl;
+                audio.load();
 
-                while(true) {
-                    const {done, value} = await reader.read();
-                    if (done) break;
-                    chunks.push(value);
-                    receivedLength += value.length;
-                    
-                    if (contentLength) {
-                        let percent = ((receivedLength / contentLength) * 100).toFixed(0);
-                        pFill.style.width = percent + '%';
-                        sText.textContent = `缓冲进度: ${percent}% (${(receivedLength/1024/1024).toFixed(1)}MB / ${(contentLength/1024/1024).toFixed(1)}MB)`;
+                // 6. 巧妙追踪原生缓冲进度（同样能让进度条跑起来！）
+                audio.onprogress = function() {
+                    if (audio.buffered.length > 0) {
+                        const bufferedEnd = audio.buffered.end(audio.buffered.length - 1);
+                        const duration = audio.duration;
+                        if (duration > 0) {
+                            let percent = ((bufferedEnd / duration) * 100).toFixed(0);
+                            pFill.style.width = percent + '%';
+                            sText.textContent = `流式缓存中: ${percent}% (已就绪 ${bufferedEnd.toFixed(0)}秒 / 共 ${duration.toFixed(0)}秒)`;
+                            // 缓存完了就悄悄收起进度条
+                            if (percent >= 99) pBg.style.display = 'none';
+                        }
                     }
+                };
+
+                // 7. 触发自动播放
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(_ => {
+                        sText.textContent = "🎵 正在云端不限速流畅播放中...";
+                    }).catch(error => {
+                        // 如果浏览器拦截了非交互的自动播放，引导用户手动点一下
+                        sText.textContent = "通道就绪！请点击下方的【播放键】开始聆听";
+                    });
                 }
+
+            } catch (err) {
+                sText.textContent = "❌ 播放失败: " + err.message;
+                pBg.style.display = 'none';
+            }
+        }
 
                 const blob = new Blob(chunks, { type: 'audio/mp3' });
                 currentBlobUrl = URL.createObjectURL(blob);
