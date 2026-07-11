@@ -3,146 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TG 智能媒体标签音乐盒</title>
+    <title>TG 智能流媒体音乐盒</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background-color: #121212; color: #e0e0e0; display: flex; height: 100vh; overflow: hidden; position: relative; }
         
-        /* ⚙️ 左侧可收起抽屉菜单 */
-        .sidebar { position: fixed; top: 0; left: 0; width: 280px; height: 100%; background-color: #1f1f1f; border-right: 1px solid #2d2d2d; padding: 30px 20px; display: flex; flex-direction: column; gap: 20px; z-index: 999; transform: translateX(-100%); transition: transform 0.3s ease; box-shadow: 5px 0 25px rgba(0,0,0,0.5); }
-        .sidebar.open { transform: translateX(0); }
-        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .sidebar-header h3 { font-size: 16px; color: #fff; }
-        .btn-close { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; }
-        .btn-close:hover { color: #fff; }
+        /* 隐藏滚动条，保持优雅 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-thumb { background: #282828; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: linear-gradient(180deg, #181818 0%, #0c0c0c 100%); 
+            color: #e4e4e7; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ==================== 1. 开头加载遮罩层（集成你的 loading 动画） ==================== */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #121212; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 0.6s ease, visibility 0.6s;
+        }
+        .loading-text {
+            color: #00ffcc; font-size: 2.5rem; font-weight: 300; letter-spacing: 2px;
+            transform: rotate(-10deg); animation: blink 2s infinite linear; 
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .loading-sub {
+            margin-top: 30px; font-size: 13px; color: #666; letter-spacing: 1px;
+        }
+
+        /* ==================== 2. 中央歌曲列表区域 ==================== */
+        .content-area {
+            width: 100%; max-width: 1000px; flex: 1; 
+            overflow-y: auto; padding: 40px 20px 140px 20px;
+            margin: 0 auto; display: flex; flex-direction: column; align-items: center;
+        }
+        .list-title {
+            font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 25px;
+            letter-spacing: 1px; width: 100%; text-align: left;
+        }
+        .playlist-table {
+            width: 100%; display: flex; flex-direction: column; gap: 8px;
+        }
         
-        /* 输入框组 */
-        .config-group { display: flex; flex-direction: column; gap: 15px; }
-        .config-item { display: flex; flex-direction: column; gap: 6px; }
-        .config-item label { font-size: 12px; color: #aaa; font-weight: 500; }
-        .config-item input { background: #2a2a2a; border: 1px solid #444; color: #fff; padding: 10px 12px; border-radius: 6px; font-size: 13px; width: 100%; }
+        /* 横向排列的一行曲目 */
+        .playlist-row {
+            display: grid;
+            grid-template-columns: 60px 2.5fr 1.5fr 1fr 1fr 80px;
+            align-items: center; background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.03); padding: 10px 16px;
+            border-radius: 10px; cursor: pointer; transition: all 0.2s ease;
+        }
+        .playlist-row:hover {
+            background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.1);
+            transform: translateY(-1px);
+        }
+        .playlist-row.active {
+            background: rgba(36, 129, 204, 0.15); border-color: rgba(36, 129, 204, 0.4);
+        }
+        
+        /* 数据项通用样式 */
+        .cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 15px; font-size: 14px; color: #b3b3b3; }
+        .cell-title { color: #fff; font-weight: 600; font-size: 15px; }
+        .cell-cover { display: flex; align-items: center; justify-content: center; }
+        .cell-cover img, .default-cover { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .default-cover { background: #282828; display: flex; align-items: center; justify-content: center; color: #666; font-size: 16px; }
+
+        .btn-del {
+            background: none; border: none; color: #ef4444; cursor: pointer;
+            font-size: 13px; text-align: center; font-weight: 500; opacity: 0.6; transition: opacity 0.2s;
+        }
+        .playlist-row:hover .btn-del { opacity: 1; }
+        .btn-del:hover { text-decoration: underline; }
+
+        /* ==================== 3. 正中央下方的长方形中央播放舱 ==================== */
+        .bottom-player-hub {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 40px); max-width: 960px; height: 90px;
+            background: rgba(24, 24, 27, 0.85); backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            display: grid; grid-template-columns: auto 200px 1fr auto;
+            align-items: center; padding: 0 24px; gap: 24px; z-index: 999;
+        }
+        
+        /* 播放器左侧：封面 */
+        .hub-cover img, .hub-default-cover { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        .hub-default-cover { background: #3f3f46; display: flex; align-items: center; justify-content: center; color: #a1a1aa; font-size: 22px; }
+
+        /* 封面右边：歌曲名称与作者 */
+        .hub-meta { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+        .hub-title { font-size: 16px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+        .hub-artist { font-size: 13px; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* 中间：进度条与缓冲机制 */
+        .hub-center-block { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+        .progress-container { width: 100%; height: 4px; background: #3f3f46; border-radius: 2px; position: relative; cursor: pointer; }
+        .progress-buffer { position: absolute; top:0; left:0; height:100%; background: #52525b; width: 0%; border-radius: 2px; transition: width 0.2s; }
+        .progress-play { position: absolute; top:0; left:0; height:100%; background: #2481cc; width: 0%; border-radius: 2px; }
+        .progress-time-row { display: flex; justify-content: space-between; font-size: 11px; color: #71717a; }
+
+        /* 右侧：核心控制按钮 */
+        .hub-controls { display: flex; align-items: center; gap: 16px; }
+        .btn-ctrl { background: none; border: none; color: #a1a1aa; font-size: 18px; cursor: pointer; transition: color 0.2s; }
+        .btn-ctrl:hover { color: #fff; }
+        .btn-play-pause { background: #fff; color: #000; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; border: none; cursor: pointer; transition: transform 0.2s; }
+        .btn-play-pause:hover { transform: scale(1.06); background: #f4f4f5; }
+
+        /* ==================== 4. 左下角小齿轮与配置菜单 ==================== */
+        .btn-gear-toggle {
+            position: fixed; bottom: 35px; left: 25px; background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08); color: #a1a1aa; width: 40px; height: 40px;
+            border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; z-index: 1000; transition: all 0.2s;
+        }
+        .btn-gear-toggle:hover { color: #fff; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+        
+        .admin-panel {
+            position: fixed; bottom: 85px; left: 25px; width: 280px;
+            background: #1f1f23; border: 1px solid #2e2e33; border-radius: 12px;
+            padding: 20px; display: flex; flex-direction: column; gap: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1001;
+            opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .admin-panel.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #fff; font-weight: bold; border-bottom: 1px solid #2e2e33; padding-bottom: 8px; }
+        .config-item { display: flex; flex-direction: column; gap: 4px; }
+        .config-item label { font-size: 11px; color: #71717a; font-weight: 600; }
+        .config-item input { background: #27272a; border: 1px solid #3f3f46; color: #fff; padding: 8px 10px; border-radius: 6px; font-size: 12px; }
         .config-item input:focus { border-color: #2481cc; outline: none; }
-        .btn-save { background-color: #2481cc; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: 10px; }
-        .btn-save:hover { background-color: #1c66a3; }
         
-        /* 🛠️ 触发菜单的悬浮按钮 */
-        .btn-menu-toggle { position: fixed; top: 15px; left: 15px; background-color: #1f1f1f; color: #fff; border: 1px solid #333; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; z-index: 98; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        .btn-menu-toggle:hover { background-color: #2a2a2a; border-color: #444; }
-
-        /* 遮罩层 */
-        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 990; display: none; }
-        .sidebar-overlay.show { display: block; }
-
-        /* 主容器 */
-        .main-container { display: flex; flex: 1; width: 100%; height: 100%; padding-left: 0; }
-        
-        /* 左侧音乐播放舱 */
-        .player-container { flex: 1.4; background-color: #0b0b0b; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; position: relative; }
-        .audio-card { background: #1e1e1e; padding: 40px 30px; border-radius: 16px; width: 100%; max-width: 480px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.6); border: 1px solid #2d2d2d; }
-        .audio-title { font-size: 22px; font-weight: bold; margin-bottom: 6px; word-break: break-all; color: #fff; }
-        .audio-artist { font-size: 15px; color: #888; margin-bottom: 25px; }
-        audio { width: 100%; margin-top: 10px; }
-        
-        /* 进度条 */
-        .status-text { margin-top: 20px; font-size: 13px; color: #888; min-height: 18px; line-height: 1.4; }
-        .progress-bar-bg { width: 100%; background: #333; height: 6px; border-radius: 3px; margin-top: 10px; display: none; overflow: hidden; }
-        .progress-bar-fill { height: 100%; background: #2481cc; width: 0%; transition: width 0.1s linear; }
-
-        /* 右侧精致播放列表 */
-        .playlist-container { flex: 1; background-color: #181818; border-left: 1px solid #2d2d2d; display: flex; flex-direction: column; z-index: 90; }
-        .playlist-header { padding: 20px 15px; padding-left: 20px; background-color: #1f1f1f; border-bottom: 1px solid #2d2d2d; display: flex; justify-content: space-between; align-items: center; height: 64px; }
-        .btn-sync { background-color: #28a745; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; display: none; }
-        .btn-sync:hover { background-color: #218838; }
-        
-        .list-items { flex: 1; overflow-y: auto; padding: 15px; }
-        .playlist-item { background: #222; padding: 14px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #2d2d2d; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: background 0.2s; }
-        .playlist-item:hover { border-color: #444; background: #282828; }
-        .playlist-item.active { border-color: #2481cc; background: #142533; }
-        .item-info { flex: 1; min-width: 0; }
-        .item-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; margin-bottom: 4px; }
-        .item-artist-size { font-size: 12px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        .btn-del { background: none; border: none; color: #dc3545; cursor: pointer; font-size: 13px; padding: 6px 10px; border-radius: 4px; font-weight: 500; display: none; }
-        .btn-del:hover { background: rgba(220, 53, 69, 0.1); }
+        .btn-action-save { background: #2481cc; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; text-align: center; }
+        .btn-action-sync { background: #22c55e; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; text-align: center; margin-top: 4px; }
     </style>
 </head>
 <body>
 
-    <button class="btn-menu-toggle" onclick="toggleSidebar()">⚙️ 配置控制台</button>
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <div id="loadingOverlay">
+        <div class="loading-text" id="loadingText">loAdinG......</div>
+        <div class="loading-sub" id="syncStatus">正在请求云端信道并执行开机对账...</div>
+    </div>
 
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3>⚙️ 管理员核心配置</h3>
-            <button class="btn-close" onclick="toggleSidebar()">×</button>
-        </div>
-        <div class="config-group">
-            <div class="config-item">
-                <label>Telegram Bot Token</label>
-                <input type="text" id="tgToken" placeholder="格式如: 123456:ABC..." />
-            </div>
-            <div class="config-item">
-                <label>GitHub Token (PAT)</label>
-                <input type="text" id="ghToken" placeholder="格式如: ghp_..." />
-            </div>
-            <div class="config-item">
-                <label>GitHub 仓库名</label>
-                <input type="text" id="ghRepo" placeholder="用户名/仓库名 (例如: otium106/MPEG-MUSIC)" />
-            </div>
-            <button class="btn-save" onclick="saveConfig()">保存配置</button>
+    <button class="btn-gear-toggle" onclick="toggleAdminPanel()">⚙️</button>
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-header"><span>⚙️ 管理配置台</span></div>
+        <div class="config-group" style="display:flex; flex-direction:column; gap:12px;">
+            <div class="config-item"><label>Telegram Bot Token</label><input type="text" id="tgToken" /></div>
+            <div class="config-item"><label>GitHub Token (PAT)</label><input type="text" id="ghToken" /></div>
+            <div class="config-item"><label>GitHub 仓库名</label><input type="text" id="ghRepo" /></div>
+            <button class="btn-action-save" onclick="saveConfig()">💾 保存配置</button>
+            <button class="btn-action-sync" onclick="manualSync()">🔄 立即强制同步</button>
         </div>
     </div>
 
-    <div class="main-container">
-        <div class="player-container">
-            <div class="audio-card">
-                <div class="audio-title" id="currentTitle">🎵 未选择曲目</div>
-                <div class="audio-artist" id="currentArtist">-</div>
-                <audio id="mainAudio" controls></audio>
-                <div class="progress-bar-bg" id="pBarBg"><div class="progress-bar-fill" id="pBarFill"></div></div>
-                <div class="status-text" id="statusText">正在从云端加载曲库...</div>
+    <div class="content-area">
+        <h2 class="list-title">🎵 共享云端多媒体曲库</h2>
+        <div class="playlist-table" id="playlistTable">
+            </div>
+    </div>
+
+    <div class="bottom-player-hub">
+        <div class="hub-cover" id="hubCover"><div class="hub-default-cover">🎵</div></div>
+        
+        <div class="hub-meta">
+            <div class="hub-title" id="currentTitle">未选择曲目</div>
+            <div class="hub-artist" id="currentArtist">-</div>
+        </div>
+        
+        <div class="hub-center-block">
+            <div class="progress-container" id="progressBar" onclick="seekAudio(event)">
+                <div class="progress-buffer" id="hubBufferFill"></div>
+                <div class="progress-play" id="hubPlayFill"></div>
+            </div>
+            <div class="progress-time-row">
+                <span id="timeCurrent">00:00</span>
+                <span id="timeDuration">00:00</span>
             </div>
         </div>
-
-        <div class="playlist-container">
-            <div class="playlist-header">
-                <h3 style="font-size: 16px;">🎵 共享云端曲库</h3>
-                <button class="btn-sync" id="btnSync" onclick="manualSync()">🔄 同步新音频</button>
-            </div>
-            <div class="list-items" id="playlistItems"></div>
+        
+        <div class="hub-controls">
+            <button class="btn-ctrl" onclick="playPrev()">⏮️</button>
+            <button class="btn-play-pause" id="btnPlayPause" onclick="togglePlay()">▶️</button>
+            <button class="btn-ctrl" onclick="playNext()">⏭️</button>
         </div>
     </div>
+
+    <audio id="mainAudio"></audio>
 
     <script>
+        // === 你的标题.html 核心轮询切换字库逻辑 ===
+        const textPool = ["loAdinG......", "読ミ込ミ中......", "載入中......", "正在读取......", "carIcamEnto......", "laden/"];
+        const loadingEl = document.getElementById('loadingText');
+        let lastText = loadingEl.innerText;
+        function changeText() {
+            const availableTexts = textPool.filter(text => text !== lastText);
+            const randomIndex = Math.floor(Math.random() * availableTexts.length);
+            loadingEl.innerText = availableTexts[randomIndex];
+            lastText = availableTexts[randomIndex];
+        }
+        function resetTimer() { setTimeout(changeText, 1000); }
+        loadingEl.addEventListener('animationiteration', resetTimer);
+
+        // === 核心业务逻辑 ===
         let playlist = [];
         let blacklist = [];
+        let currentIndex = -1;
         const PUBLIC_REPO = "otium106/MPEG-MUSIC"; 
+        const audio = document.getElementById('mainAudio');
 
         window.onload = async function() {
             document.getElementById('tgToken').value = localStorage.getItem('cfg_tg_token') || '';
             document.getElementById('ghToken').value = localStorage.getItem('cfg_gh_token') || '';
             document.getElementById('ghRepo').value = localStorage.getItem('cfg_gh_repo') || PUBLIC_REPO;
             
-            checkAdminPrivileges();
-            await loadPublicPlaylist();
+            // 🚀 核心要求：开机进入网页时，自动静默执行一次同步对账
+            await autoInitialSync();
+            
+            // 绑定音频实时更新事件
+            audio.addEventListener('timeupdate', updatePlaybackProgress);
+            audio.addEventListener('durationchange', () => {
+                document.getElementById('timeDuration').textContent = formatTime(audio.duration);
+            });
+            audio.addEventListener('ended', playNext);
         }
 
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('show');
+        function toggleAdminPanel() {
+            document.getElementById('adminPanel').classList.toggle('show');
         }
 
         function saveConfig() {
             localStorage.setItem('cfg_tg_token', document.getElementById('tgToken').value.trim());
             localStorage.setItem('cfg_gh_token', document.getElementById('ghToken').value.trim());
             localStorage.setItem('cfg_gh_repo', document.getElementById('ghRepo').value.trim());
-            
-            checkAdminPrivileges();
             alert('配置已安全保存在本地！');
-            toggleSidebar();
+            toggleAdminPanel();
             loadPublicPlaylist();
         }
 
@@ -154,67 +261,281 @@
             };
         }
 
-        function checkAdminPrivileges() {
+        // 开机自动同步与入场切换
+        async var autoInitialSync = async function() {
             const { tgToken, ghToken } = getConfig();
-            document.getElementById('btnSync').style.display = (tgToken && ghToken) ? "block" : "none";
+            const statusEl = document.getElementById('syncStatus');
+            
+            if (tgToken && ghToken) {
+                statusEl.textContent = "正在云端极速对账更新中...";
+                await silentSyncLogic();
+            } else {
+                statusEl.textContent = "拉取公开分布式歌单...";
+                await loadPublicPlaylist();
+            }
+            
+            // 撤除开场 Loading 遮罩层
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => { overlay.style.visibility = 'hidden'; }, 600);
         }
 
         async function loadPublicPlaylist() {
             const { ghRepo } = getConfig();
-            const sText = document.getElementById('statusText');
             try {
                 const res = await fetch(`https://raw.githubusercontent.com/${ghRepo}/main/playlist.json?t=${new Date().getTime()}`);
-                if (!res.ok) throw new Error("无法读取云端公开列表");
+                if (!res.ok) throw new Error();
                 playlist = await res.json();
-                renderPlaylist();
-                sText.textContent = playlist.length > 0 ? "🎵 云端曲库载入成功！请选择歌曲播放" : "云端曲库目前为空，期待管理员同步歌曲。";
+                renderPlaylistTable();
             } catch (e) {
                 playlist = JSON.parse(localStorage.getItem('local_playlist')) || [];
-                renderPlaylist();
-                sText.textContent = "提示: 正在使用本地离线曲库游览";
+                renderPlaylistTable();
             }
         }
 
-        // 🌟 核心技术升级：异步解析远程音频文件自带的 ID3 媒体标签
+        // 🌟 核心技术升级：异步解析远程音频内置封面图与ID3标签
         async function getAudioMetadata(url, fallbackName, msgDate) {
             return new Promise((resolve) => {
-                // 利用 jsmediatags 直接读取远程链接的文件头
                 jsmediatags.read(url, {
                     onSuccess: function(tag) {
                         const tags = tag.tags;
                         let title = tags.title ? tags.title.trim() : "";
                         let artist = tags.artist ? tags.artist.trim() : "";
+                        let coverUrl = "";
 
-                        // 如果音乐标签里有货，直接完美采用
+                        // 如果内嵌了专辑图片，将其转换为前端可直接渲染的 Base64 缓存数据
+                        if (tags.picture) {
+                            const { data, format } = tags.picture;
+                            let base64String = "";
+                            for (let i = 0; i < data.length; i++) {
+                                base64String += String.fromCharCode(data[i]);
+                            }
+                            coverUrl = `data:${format};base64,${window.btoa(base64String)}`;
+                        }
+
                         if (title) {
-                            resolve({ title, artist: artist || "未知歌手" });
+                            resolve({ title, artist: artist || "未知歌手", cover: coverUrl });
                             return;
                         }
-                        // 如果标签为空，执行文件名切割硬兜底
-                        resolve(parseFallbackName(fallbackName, msgDate));
+                        resolve(parseFallbackName(fallbackName, msgDate, coverUrl));
                     },
-                    onError: function(error) {
-                        // 遇到不支持 ID3 的格式（如某些语音）或读取失败，执行文件名切割兜底
-                        console.log("标签读取失败或格式不支持，切换至文件名解析:", error.message);
-                        resolve(parseFallbackName(fallbackName, msgDate));
+                    onError: function() {
+                        resolve(parseFallbackName(fallbackName, msgDate, ""));
                     }
                 });
             });
         }
 
-        // 文件名切分兜底函数
-        function parseFallbackName(rawName, msgDate) {
+        function parseFallbackName(rawName, msgDate, coverUrl) {
             if (!rawName) {
-                const timeStr = `${msgDate.getFullYear()}${(msgDate.getMonth()+1).toString().padStart(2,'0')}${msgDate.getDate().toString().padStart(2,'0')}_${msgDate.getHours().toString().padStart(2,'0')}${msgDate.getMinutes().toString().padStart(2,'0')}`;
-                return { title: `未命名音频_${timeStr}`, artist: "未知来源" };
+                const timeStr = `${msgDate.getFullYear()}${(msgDate.getMonth()+1).toString().padStart(2,'0')}${msgDate.getDate().toString().padStart(2,'0')}_${msgDate.getHours().toString().padStart(2,'0')}`;
+                return { title: `未命名音频_${timeStr}`, artist: "未知群星", cover: coverUrl };
             }
             const cleanName = rawName.replace(/\.[^/.]+$/, "");
             if (cleanName.includes('-')) {
                 const parts = cleanName.split('-');
-                return { title: parts[0].trim(), artist: parts.slice(1).join('-').trim() };
+                return { title: parts[0].trim(), artist: parts.slice(1).join('-').trim(), cover: coverUrl };
             } else {
-                return { title: cleanName, artist: "未知群星" };
+                return { title: cleanName, artist: "未知群星", cover: coverUrl };
             }
+        }
+
+        // 静默同步对账纯逻辑（不污染UI弹窗）
+        async function silentSyncLogic() {
+            const { tgToken, ghToken, ghRepo } = getConfig();
+            try {
+                const ghPlaylist = await fetchGitHubFile('playlist.json', ghToken, ghRepo);
+                const ghBlacklist = await fetchGitHubFile('blacklist.json', ghToken, ghRepo);
+                playlist = ghPlaylist.data; blacklist = ghBlacklist.data;
+                const lastUpdateId = localStorage.getItem('tg_last_id') || 0;
+                const tgRes = await fetch(`https://api.telegram.org/bot${tgToken}/getUpdates?offset=${lastUpdateId}`);
+                const tgData = await tgRes.json();
+                let hasNew = false;
+                if (tgData.ok && tgData.result.length > 0) {
+                    for (const update of tgData.result) {
+                        localStorage.setItem('tg_last_id', update.update_id + 1);
+                        const msg = update.message;
+                        if (msg && (msg.audio || msg.voice || msg.document)) {
+                            let audioObj = msg.audio || msg.voice || msg.document;
+                            if (msg.document && !msg.document.mime_type.startsWith('audio/')) audioObj = null;
+                            if (audioObj) {
+                                const fileId = audioObj.file_id;
+                                if (!blacklist.includes(fileId) && !playlist.some(item => item.fileId === fileId)) {
+                                    const fileRes = await fetch(`https://api.telegram.org/bot${tgToken}/getFile?file_id=${fileId}`);
+                                    const fileData = await fileRes.json();
+                                    let meta = { title: audioObj.file_name, artist: "未知群星", cover: "" };
+                                    if (fileData.ok) {
+                                        const fileUrl = `https://api.telegram.org/file/bot${tgToken}/${fileData.result.file_path}`;
+                                        meta = await getAudioMetadata(fileUrl, audioObj.file_name, new Date(msg.date * 1000));
+                                    }
+                                    const size = (audioObj.file_size / (1024 * 1024)).toFixed(2) + " MB";
+                                    // 持续追踪音频长度（若TG元数据存在则直接用）
+                                    const durationStr = audioObj.duration ? formatTime(audioObj.duration) : "--:--";
+                                    playlist.push({ fileId, title: meta.title, artist: meta.artist, size, duration: durationStr, cover: meta.cover });
+                                    hasNew = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (hasNew) await updateGitHubFile('playlist.json', playlist, ghPlaylist.sha, ghToken, ghRepo);
+                localStorage.setItem('local_playlist', JSON.stringify(playlist));
+                renderPlaylistTable();
+            } catch (e) { console.error("静默同步发生异常", e); await loadPublicPlaylist(); }
+        }
+
+        async function manualSync() {
+            const { tgToken, ghToken } = getConfig();
+            if (!tgToken || !ghToken) return alert('管理员令牌未配置完整！');
+            alert('开始强制双向同步，请静待几秒...');
+            await silentSyncLogic();
+            alert('同步完成！');
+        }
+
+        // 横向数据表格渲染
+        function renderPlaylistTable() {
+            const container = document.getElementById('playlistTable');
+            container.innerHTML = playlist.length === 0 ? '<div style="color:#555;text-align:center;padding:40px;font-size:14px;">云端曲库如镜般空旷</div>' : '';
+
+            playlist.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = `playlist-row ${index === currentIndex ? 'active' : ''}`;
+                row.onclick = () => loadAndPlay(index);
+                
+                const coverHtml = item.cover ? `<img src="${item.cover}"/>` : `<div class="default-cover">🎵</div>`;
+                const { ghToken } = getConfig();
+                const delBtnHtml = ghToken ? `<button class="btn-del" onclick="deleteItem(${index}, event)">移除</button>` : '<span>-</span>';
+
+                row.innerHTML = `
+                    <div class="cell cell-cover">${coverHtml}</div>
+                    <div class="cell cell-title">${item.title}</div>
+                    <div class="cell">${item.artist}</div>
+                    <div class="cell">${item.duration || '--:--'}</div>
+                    <div class="cell">${item.size || '0 MB'}</div>
+                    <div class="cell" style="padding-right:0; text-align:center;">${delBtnHtml}</div>
+                `;
+                container.appendChild(div = row);
+            });
+        }
+
+        async function loadAndPlay(index) {
+            if (index < 0 || index >= playlist.length) return;
+            currentIndex = index;
+            renderPlaylistTable();
+
+            const item = playlist[currentIndex];
+            document.getElementById('currentTitle').textContent = item.title;
+            document.getElementById('currentArtist').textContent = item.artist;
+            
+            // 联动中舱封面同步更新
+            const hubCover = document.getElementById('hubCover');
+            hubCover.innerHTML = item.cover ? `<img src="${item.cover}"/>` : `<div class="hub-default-cover">🎵</div>`;
+
+            document.getElementById('hubPlayFill').style.width = '0%';
+            document.getElementById('hubBufferFill').style.width = '0%';
+
+            try {
+                let { tgToken } = getConfig();
+                if (!tgToken) tgToken = "8260110294:AAHW90v2ICiMZHAVsYOAFMzq8N0sm3mnPuQ"; 
+
+                const fileRes = await fetch(`https://api.telegram.org/bot${tgToken}/getFile?file_id=${item.fileId}`);
+                const fileData = await fileRes.json();
+                if (!fileData.ok) throw new Error();
+
+                audio.src = `https://api.telegram.org/file/bot${tgToken}/${fileData.result.file_path}`;
+                audio.load();
+                
+                audio.play().then(() => {
+                    document.getElementById('btnPlayPause').textContent = "⏸️";
+                }).catch(() => {
+                    document.getElementById('btnPlayPause').textContent = "▶️";
+                });
+            } catch (err) {
+                alert("信道握手失败");
+            }
+        }
+
+        // 音频播放时监听与原生进度缓冲计算
+        function updatePlaybackProgress() {
+            if (!audio.duration) return;
+            
+            // 1. 计算播放线
+            const playPercent = (audio.currentTime / audio.duration) * 100;
+            document.getElementById('hubPlayFill').style.width = playPercent + '%';
+            document.getElementById('timeCurrent').textContent = formatTime(audio.currentTime);
+
+            // 2. 计算原生流式缓冲线
+            if (audio.buffered.length > 0) {
+                const bufferEnd = audio.buffered.end(audio.buffered.length - 1);
+                const bufferPercent = (bufferEnd / audio.duration) * 100;
+                document.getElementById('hubBufferFill').style.width = bufferPercent + '%';
+            }
+        }
+
+        // 进度条点击调整跳转
+        function seekAudio(e) {
+            if (!audio.duration) return;
+            const bar = document.getElementById('progressBar');
+            const rect = bar.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const percent = clickX / rect.width;
+            audio.currentTime = percent * audio.duration;
+        }
+
+        function togglePlay() {
+            if (!audio.src) return;
+            if (audio.paused) {
+                audio.play();
+                document.getElementById('btnPlayPause').textContent = "⏸️";
+            } else {
+                audio.pause();
+                document.getElementById('btnPlayPause').textContent = "▶️";
+            }
+        }
+
+        function playNext() {
+            if (playlist.length === 0) return;
+            let next = currentIndex + 1;
+            if (next >= playlist.length) next = 0;
+            loadAndPlay(next);
+        }
+
+        function playPrev() {
+            if (playlist.length === 0) return;
+            let prev = currentIndex - 1;
+            if (prev < 0) prev = playlist.length - 1;
+            loadAndPlay(prev);
+        }
+
+        async function deleteItem(index, event) {
+            event.stopPropagation();
+            const { ghToken, ghRepo } = getConfig();
+            if (!ghToken) return;
+            if (!confirm(`确定下架永久封禁《${playlist[index].title}》吗？`)) return;
+
+            try {
+                const ghPlaylist = await fetchGitHubFile('playlist.json', ghToken, ghRepo);
+                const ghBlacklist = await fetchGitHubFile('blacklist.json', ghToken, ghRepo);
+                playlist = ghPlaylist.data; blacklist = ghBlacklist.data;
+
+                const targetFileId = playlist[index].fileId;
+                playlist.splice(index, 1);
+                if (!blacklist.includes(targetFileId)) blacklist.push(targetFileId);
+
+                await updateGitHubFile('playlist.json', playlist, ghPlaylist.sha, ghToken, ghRepo);
+                await updateGitHubFile('blacklist.json', blacklist, ghBlacklist.sha, ghToken, ghRepo);
+
+                localStorage.setItem('local_playlist', JSON.stringify(playlist));
+                if (currentIndex === index) { audio.pause(); audio.src = ""; }
+                renderPlaylistTable();
+            } catch (e) { alert('云端下架同步出错'); }
+        }
+
+        function formatTime(secs) {
+            if (isNaN(secs)) return "00:00";
+            const m = Math.floor(secs / 60).toString().padStart(2, '0');
+            const s = Math.floor(secs % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
         }
 
         async function fetchGitHubFile(filename, token, repo) {
@@ -222,7 +543,6 @@
                 headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
             });
             if (res.status === 404) return { sha: null, data: [] };
-            if (!res.ok) throw new Error(`HTTP 状态错误: ${res.status}`);
             const json = await res.json();
             const rawContent = decodeURIComponent(escape(atob(json.content.replace(/\n/g, ''))));
             return { sha: json.sha, data: JSON.parse(rawContent) };
@@ -233,196 +553,7 @@
             await fetch(`https://api.github.com/repos/${repo}/contents/${filename}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: `Web Music Box Sync ${filename}`, content: contentBase64, sha: sha })
-            });
-        }
-
-        async function manualSync() {
-            const { tgToken, ghToken, ghRepo } = getConfig();
-            if (!tgToken || !ghToken) return alert('请先展开左侧配置面板填写 Token！');
-
-            document.getElementById('statusText').textContent = "正在联络云端进行双向对账...";
-
-            try {
-                const ghPlaylist = await fetchGitHubFile('playlist.json', ghToken, ghRepo);
-                const ghBlacklist = await fetchGitHubFile('blacklist.json', ghToken, ghRepo);
-                
-                playlist = ghPlaylist.data;
-                blacklist = ghBlacklist.data;
-
-                const lastUpdateId = localStorage.getItem('tg_last_id') || 0;
-                const tgRes = await fetch(`https://api.telegram.org/bot${tgToken}/getUpdates?offset=${lastUpdateId}`);
-                const tgData = await tgRes.json();
-
-                let hasNew = false;
-
-                if (tgData.ok && tgData.result.length > 0) {
-                    // 使用 for...of 循环，确保内部的 await 异步解析解析能按顺序执行
-                    for (const update of tgData.result) {
-                        localStorage.setItem('tg_last_id', update.update_id + 1);
-                        const msg = update.message;
-                        
-                        if (msg && (msg.audio || msg.voice || msg.document)) {
-                            let audioObj = msg.audio || msg.voice || msg.document;
-                            if (msg.document && !msg.document.mime_type.startsWith('audio/')) audioObj = null;
-
-                            if (audioObj) {
-                                const fileId = audioObj.file_id;
-                                if (!blacklist.includes(fileId) && !playlist.some(item => item.fileId === fileId)) {
-                                    
-                                    document.getElementById('statusText').textContent = `正在透视提取新音频内置的音乐标签...`;
-                                    
-                                    // 1. 先换取临时真实下载路径
-                                    const fileRes = await fetch(`https://api.telegram.org/bot${tgToken}/getFile?file_id=${fileId}`);
-                                    const fileData = await fileRes.json();
-                                    
-                                    let meta = { title: audioObj.file_name, artist: "未知群星" };
-                                    if (fileData.ok) {
-                                        const fileUrl = `https://api.telegram.org/file/bot${tgToken}/${fileData.result.file_path}`;
-                                        // 2. 扔给 jsmediatags 深度提取
-                                        const msgDate = new Date(msg.date * 1000);
-                                        meta = await getAudioMetadata(fileUrl, audioObj.file_name, msgDate);
-                                    }
-
-                                    const size = (audioObj.file_size / (1024 * 1024)).toFixed(2) + " MB";
-                                    playlist.push({ fileId, title: meta.title, artist: meta.artist, size });
-                                    hasNew = true;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (hasNew) {
-                    await updateGitHubFile('playlist.json', playlist, ghPlaylist.sha, ghToken, ghRepo);
-                }
-
-                localStorage.setItem('local_playlist', JSON.stringify(playlist));
-                renderPlaylist();
-                document.getElementById('statusText').textContent = "同步对账完成，智能曲目已精确归档！";
-
-            } catch (err) {
-                console.error(err);
-                document.getElementById('statusText').textContent = "同步中止，网络异常或密匙失效。";
-            }
-        }
-
-        async function deleteItem(index, event) {
-            event.stopPropagation();
-            const { ghToken, ghRepo } = getConfig();
-            if (!ghToken) return alert('非管理员无权移除歌曲');
-
-            const confirmDel = confirm(`确定要移除《${playlist[index].title}》吗？`);
-            if (!confirmDel) return;
-
-            document.getElementById('statusText').textContent = "正在云端封禁该资源...";
-
-            try {
-                const ghPlaylist = await fetchGitHubFile('playlist.json', ghToken, ghRepo);
-                const ghBlacklist = await fetchGitHubFile('blacklist.json', ghToken, ghRepo);
-
-                playlist = ghPlaylist.data;
-                blacklist = ghBlacklist.data;
-
-                const targetFileId = playlist[index].fileId;
-                playlist.splice(index, 1);
-                if (!blacklist.includes(targetFileId)) blacklist.push(targetFileId);
-
-                await updateGitHubFile('playlist.json', playlist, ghPlaylist.sha, ghToken, ghRepo);
-                await updateGitHubFile('blacklist.json', blacklist, ghBlacklist.sha, ghToken, ghRepo);
-
-                localStorage.setItem('local_playlist', JSON.stringify(playlist));
-                renderPlaylist();
-                document.getElementById('statusText').textContent = "资源已成功下架。";
-
-            } catch (e) {
-                alert('通信失败，请重试。');
-            }
-        }
-
-        async function loadAndPlay(fileId, index) {
-            const pBg = document.getElementById('pBarBg');
-            const pFill = document.getElementById('pBarFill');
-            const sText = document.getElementById('statusText');
-            const audio = document.getElementById('mainAudio');
-
-            document.querySelectorAll('.playlist-item').forEach((el, i) => {
-                el.classList.toggle('active', i === index);
-            });
-            
-            document.getElementById('currentTitle').textContent = playlist[index].title;
-            document.getElementById('currentArtist').textContent = playlist[index].artist;
-
-            pBg.style.display = 'block';
-            pFill.style.width = '0%';
-            sText.textContent = "正在向云端节点申请临时播放信道...";
-
-            audio.onprogress = null;
-
-            try {
-                let { tgToken } = getConfig();
-                if (!tgToken) {
-                    tgToken = "8260110294:AAHW90v2ICiMZHAVsYOAFMzq8N0sm3mnPuQ"; 
-                }
-
-                const fileRes = await fetch(`https://api.telegram.org/bot${tgToken}/getFile?file_id=${fileId}`);
-                const fileData = await fileRes.json();
-                if (!fileData.ok) throw new Error("云端服务器拒绝了本次音频流请求");
-
-                const realUrl = `https://api.telegram.org/file/bot${tgToken}/${fileData.result.file_path}`;
-                sText.textContent = "信道建立就绪，音频极速启动中...";
-
-                audio.src = realUrl;
-                audio.load();
-
-                audio.onprogress = function() {
-                    if (audio.buffered.length > 0) {
-                        const bufferedEnd = audio.buffered.end(audio.buffered.length - 1);
-                        const duration = audio.duration;
-                        if (duration > 0) {
-                            let percent = ((bufferedEnd / duration) * 100).toFixed(0);
-                            pFill.style.width = percent + '%';
-                            sText.textContent = `流式缓存中: ${percent}% (已加载 ${bufferedEnd.toFixed(0)}秒 / 共 ${duration.toFixed(0)}秒)`;
-                            if (percent >= 99) pBg.style.display = 'none';
-                        }
-                    }
-                };
-
-                const playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(_ => {
-                        sText.textContent = "🎵 正在云端不限速流畅播放中...";
-                    }).catch(error => {
-                        sText.textContent = "通道就绪！请点击下方的【播放键】开始聆听";
-                    });
-                }
-
-            } catch (err) {
-                sText.textContent = "❌ 播放失败: " + err.message;
-                pBg.style.display = 'none';
-            }
-        }
-
-        function renderPlaylist() {
-            const container = document.getElementById('playlistItems');
-            const { ghToken } = getConfig();
-            container.innerHTML = playlist.length === 0 ? '<div style="color:#555;text-align:center;margin-top:30px;font-size:14px;">您的云端曲库为空<br>请展开配置面板点击[同步新音频]</div>' : '';
-
-            playlist.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = 'playlist-item';
-                div.onclick = () => loadAndPlay(item.fileId, index);
-                
-                const delBtnHtml = ghToken ? `<button class="btn-del" style="display:block;" onclick="deleteItem(${index}, event)">🗑️ 移除</button>` : '';
-
-                div.innerHTML = `
-                    <div class="item-info">
-                        <div class="item-title">${item.title}</div>
-                        <div class="item-artist-size">👤 ${item.artist} &nbsp;·&nbsp; ${item.size}</div>
-                    </div>
-                    ${delBtnHtml}
-                `;
-                container.appendChild(div);
+                body: JSON.stringify({ message: `Web Music Hub Update ${filename}`, content: contentBase64, sha: sha })
             });
         }
     </script>
