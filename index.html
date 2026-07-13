@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的 GitHub 音乐播放器</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #ffffff;
+            --text-secondary: #b3b3b3;
+            --accent-color: #1db954; /* 经典流媒体绿 */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .player-container {
+            width: 90%;
+            max-width: 400px;
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        /* 歌曲信息区域 */
+        .track-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .track-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin: 10px 0 5px 0;
+        }
+        .track-artist {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* 原生音频控件样式定制 */
+        audio {
+            width: 100%;
+            margin-bottom: 20px;
+            filter: invert(0.9); /* 适配暗黑模式 */
+        }
+
+        /* 播放列表区域 */
+        .playlist-header {
+            font-size: 1.1rem;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+
+        .playlist {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .playlist li {
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            transition: background 0.2s;
+            margin-bottom: 5px;
+        }
+
+        .playlist li:hover {
+            background-color: #282828;
+        }
+
+        .playlist li.active {
+            color: var(--accent-color);
+            background-color: #282828;
+            font-weight: bold;
+        }
+
+        .playlist li .artist {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="player-container">
+    <div class="track-info">
+        <div class="track-title" id="current-title">正在加载...</div>
+        <div class="track-artist" id="current-artist">请稍候</div>
+    </div>
+
+    <audio id="audio-player" controls preload="auto"></audio>
+
+    <div class="playlist-header">播放列表</div>
+    <ul class="playlist" id="playlist-container">
+        </ul>
+</div>
+
+<script>
+    // 1. 播放列表配置文件路径（放在同级目录下）
+    const CONFIG_URL = './playlist.json'; 
+
+    const audioPlayer = document.getElementById('audio-player');
+    const playlistContainer = document.getElementById('playlist-container');
+    const currentTitle = document.getElementById('current-title');
+    const currentArtist = document.getElementById('current-artist');
+
+    let songs = [];
+    let currentIndex = 0;
+
+    // 从 GitHub 仓库读取播放列表 JSON
+    async function loadPlaylist() {
+        try {
+            const response = await fetch(CONFIG_URL);
+            if (!response.ok) throw new Error('无法获取播放列表');
+            songs = await response.json();
+            
+            if (songs.length > 0) {
+                renderPlaylist();
+                loadTrack(0);
+            } else {
+                currentTitle.innerText = "播放列表为空";
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            currentTitle.innerText = "加载失败，请检查配置文件";
+        }
+    }
+
+    // 渲染列表到页面
+    function renderPlaylist() {
+        playlistContainer.innerHTML = '';
+        songs.forEach((song, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${song.title}</span><span class="artist">${song.artist}</span>`;
+            li.addEventListener('click', () => {
+                loadTrack(index);
+                audioPlayer.play();
+            });
+            playlistContainer.appendChild(li);
+        });
+    }
+
+    // 加载指定索引的歌曲
+    function loadTrack(index) {
+        currentIndex = index;
+        const song = songs[index];
+        
+        // 更新音频源和界面
+        audioPlayer.src = song.url;
+        currentTitle.innerText = song.title;
+        currentArtist.innerText = song.artist || '未知艺术家';
+
+        // 高亮当前播放项
+        const items = playlistContainer.querySelectorAll('li');
+        items.forEach((item, idx) => {
+            if (idx === index) {
+                item.classList.add('active');
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    // 自动播放下一首
+    audioPlayer.addEventListener('ended', () => {
+        currentIndex = (currentIndex + 1) % songs.length;
+        loadTrack(currentIndex);
+        audioPlayer.play();
+    });
+
+    // 初始化
+    loadPlaylist();
+</script>
+
+</body>
+</html>
