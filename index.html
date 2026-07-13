@@ -126,7 +126,7 @@
             font-size: 0.9rem;
         }
 
-        /* --- 3. 底部全宽低调播放器 --- */
+/* --- 3. 底部全宽低调播放器 --- */
         .bottom-player {
             position: fixed;
             bottom: 0; left: 0; width: 100%;
@@ -145,7 +145,7 @@
             gap: 20px;
             width: 90%;
             max-width: 600px;
-            margin-bottom: 12px;
+            margin-bottom: 16px; /* 稍微拉开一点与下方进度条的距离 */
         }
         /* 核心控制按钮 */
         .ctrl-btn {
@@ -182,20 +182,21 @@
             color: #fff;
         }
 
-        /* 进度条与音量条样式组件 */
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
+        /* 进度条拉长一倍 */
         .progress-wrapper {
             width: 90%;
-            max-width: 500px;
+            max-width: 800px; /* 宽度从 500px 提升到 800px */
             margin-bottom: 8px;
         }
         .progress-wrapper .slider-container { width: 100%; }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
         
         input[type="range"] {
             flex: 1;
@@ -286,14 +287,6 @@
 <audio id="audio-player" preload="auto"></audio>
 
 <div class="bottom-player">
-    <div class="progress-wrapper">
-        <div class="slider-container">
-            <span id="time-current">00:00</span>
-            <input type="range" id="progress-bar" value="0" min="0" max="100">
-            <span id="time-total">00:00</span>
-        </div>
-    </div>
-
     <div class="controls-row">
         <button class="ctrl-btn" id="random-btn">随机播放</button>
         <button class="ctrl-btn" id="prev-btn">上一首</button>
@@ -303,6 +296,14 @@
         <div class="volume-container">
             <span style="font-size:0.8rem;">音量</span>
             <input type="range" id="volume-bar" value="100" min="0" max="100">
+        </div>
+    </div>
+
+    <div class="progress-wrapper">
+        <div class="slider-container">
+            <span id="time-current">00:00</span>
+            <input type="range" id="progress-bar" value="0" min="0" max="100">
+            <span id="time-total">00:00</span>
         </div>
     </div>
 </div>
