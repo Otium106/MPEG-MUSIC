@@ -160,8 +160,8 @@
 
 <div class="player-container">
     <div class="track-info">
-        <div class="track-title" id="current-title">正在加载...</div>
-        <div class="track-artist" id="current-artist">请稍候</div>
+        <div class="track-title" id="current-title">列表为空，请点击左下角添加</div>
+        <div class="track-artist" id="current-artist"></div>
     </div>
     <audio id="audio-player" controls preload="auto"></audio>
     <div class="playlist-header">播放列表</div>
@@ -170,12 +170,122 @@
 
 <div class="add-btn" id="open-modal-btn">+</div>
 
-// 监听输入框失去焦点，自动尝试解析
-    urlInput.addEventListener('blur', async () => {
+<div class="modal" id="add-modal">
+    <h3 style="margin-top:0; font-size:1rem;">添加新歌曲</h3>
+    <input type="text" id="token-input" placeholder="GitHub Token (首次需输入)">
+    <input type="text" id="url-input" placeholder="粘贴音乐直链地址">
+    <input type="text" id="title-input" placeholder="歌曲名称 (自动解析/可手动修改)">
+    <input type="text" id="artist-input" placeholder="歌手名称 (自动解析/可手动修改)">
+    <button id="submit-btn">确定并添加至 GitHub</button>
+    <div class="hint" id="status-hint">输入直链后离开焦点可自动尝试解析</div>
+</div>
+
+<audio id="meta-parser" style="display:none;" preload="metadata"></audio>
+
+<script>
+    // ⚠️ 请务必在此处修改为您自己的 GitHub 配置
+    const GITHUB_CONFIG = {
+        owner: '你的GitHub用户名', 
+        repo: '你的仓库名',       
+        path: 'playlist.json'
+    };
+
+    const CONFIG_URL = `./${GITHUB_CONFIG.path}`; 
+    const audioPlayer = document.getElementById('audio-player');
+    const playlistContainer = document.getElementById('playlist-container');
+    const currentTitle = document.getElementById('current-title');
+    const currentArtist = document.getElementById('current-artist');
+    
+    const addModal = document.getElementById('add-modal');
+    const openModalBtn = document.getElementById('open-modal-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const urlInput = document.getElementById('url-input');
+    const tokenInput = document.getElementById('token-input');
+    const statusHint = document.getElementById('status-hint');
+    const metaParser = document.getElementById('meta-parser');
+
+    let songs = [];
+    let currentIndex = 0;
+    let fileSha = ''; 
+
+    // 强力刷新并加载列表与最新的 SHA 标识
+    async function loadPlaylist() {
+        try {
+            const metaRes = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}?t=${new Date().getTime()}`);
+            if(metaRes.ok) {
+                const metaData = await metaRes.json();
+                fileSha = metaData.sha; // 获取最新的文件 SHA
+                const rawContent = atob(metaData.content.replace(/\s/g, ''));
+                
+                // 健壮性处理：如果文件是空的，或者是死字符，初始化为空数组
+                if (!rawContent || rawContent.trim() === "" || rawContent.trim() === "[]") {
+                    songs = [];
+                } else {
+                    songs = JSON.parse(decodeURIComponent(escape(rawContent)));
+                }
+            }
+
+            if (songs && songs.length > 0) {
+                renderPlaylist();
+                loadTrack(0);
+            } else {
+                playlistContainer.innerHTML = '';
+                currentTitle.innerText = "列表为空，请点击左下角添加";
+                currentArtist.innerText = "";
+                audioPlayer.src = "";
+            }
+        } catch (error) {
+            console.error(error);
+            // 兜底方案
+            songs = [];
+        }
+    }
+
+    function renderPlaylist() {
+        playlistContainer.innerHTML = '';
+        songs.forEach((song, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${song.title}</span><span class="artist">${song.artist}</span>`;
+            li.addEventListener('click', () => { loadTrack(index); audioPlayer.play(); });
+            playlistContainer.appendChild(li);
+        });
+    }
+
+    function loadTrack(index) {
+        if(!songs || songs.length === 0) return;
+        currentIndex = index;
+        const song = songs[index];
+        audioPlayer.src = song.url;
+        currentTitle.innerText = song.title;
+        currentArtist.innerText = song.artist || '未知';
+        
+        const items = playlistContainer.querySelectorAll('li');
+        items.forEach((item, idx) => {
+            idx === index ? item.classList.add('active') : item.classList.remove('active');
+        });
+    }
+
+    audioPlayer.addEventListener('ended', () => {
+        if(songs.length === 0) return;
+        currentIndex = (currentIndex + 1) % songs.length;
+        loadTrack(currentIndex);
+        audioPlayer.play();
+    });
+
+    openModalBtn.addEventListener('click', async () => {
+        addModal.style.display = addModal.style.display === 'block' ? 'none' : 'block';
+        if(localStorage.getItem('git_token')) {
+            tokenInput.value = localStorage.getItem('git_token');
+        }
+        // 每次打开弹窗，都在后台静默刷新一次最新的 SHA 标识，防止冲突
+        await loadPlaylist();
+    });
+
+    // 自动解析歌名
+    urlInput.addEventListener('blur', () => {
         const url = urlInput.value.trim();
         if(!url) return;
         
-        // 兜底拆分文件名
         let title = url.substring(url.lastIndexOf('/') + 1).replace(/\.[^/.]+$/, "");
         let artist = "未知歌手";
         if(title.includes('-')) {
@@ -185,19 +295,11 @@
         }
         document.getElementById('title-input').value = title;
         document.getElementById('artist-input').value = artist;
-
-        // 尝试解析元数据
-        try {
-            metaParser.src = url;
-            // 如果高级标签解析库可用可以在此拓展，此处保持轻量级加载
-        } catch (e) {}
     });
 
-    // 点击添加按钮逻辑
     submitBtn.addEventListener('click', async () => {
         const url = urlInput.value.trim();
         const token = tokenInput.value.trim();
-        // 获取输入框里的最终名字（允许手动修改）
         const title = document.getElementById('title-input').value.trim() || "新歌曲";
         const artist = document.getElementById('artist-input').value.trim() || "未知歌手";
 
@@ -209,6 +311,15 @@
         localStorage.setItem('git_token', token);
         submitBtn.disabled = true;
         statusHint.innerText = "正在同步写入 GitHub...";
+
+        // 重新获取一次最新的 SHA，双重保险防冲突
+        try {
+            const metaRes = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}?t=${new Date().getTime()}`);
+            if(metaRes.ok) {
+                const metaData = await metaRes.json();
+                fileSha = metaData.sha;
+            }
+        } catch(e){}
 
         const newSong = { title, artist, url };
         songs.push(newSong);
@@ -222,7 +333,6 @@
                 },
                 body: JSON.stringify({
                     message: `Add new song: ${title}`,
-                    // ✨ 核心修复：使用标准的 UTF-8 转码方案，彻底解决中文乱码
                     content: btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(songs, null, 2)))),
                     sha: fileSha
                 })
@@ -244,177 +354,6 @@
         } catch (err) {
             alert('同步失败: ' + err.message);
             songs.pop();
-        } finally {
-            submitBtn.disabled = false;
-        }
-    });
-
-<audio id="meta-parser" style="display:none;" preload="metadata"></audio>
-
-<script>
-    // 配置你的 GitHub 信息
-    const GITHUB_CONFIG = {
-        owner: 'Otium106', 
-        repo: 'MPEG-MUSIC',       
-        path: 'playlist.json'
-    };
-
-    const CONFIG_URL = `./${GITHUB_CONFIG.path}`; 
-    const audioPlayer = document.getElementById('audio-player');
-    const playlistContainer = document.getElementById('playlist-container');
-    const currentTitle = document.getElementById('current-title');
-    const currentArtist = document.getElementById('current-artist');
-    
-    const addModal = document.getElementById('add-modal');
-    const openModalBtn = document.getElementById('open-modal-btn');
-    const submitBtn = document.getElementById('submit-btn');
-    const urlInput = document.getElementById('url-input');
-    const tokenInput = document.getElementById('token-input');
-    const statusHint = document.getElementById('status-hint');
-    const metaParser = document.getElementById('meta-parser');
-
-    let songs = [];
-    let currentIndex = 0;
-    let fileSha = ''; // GitHub API 需要的旧文件标识
-
-    // 初始化加载
-    async function loadPlaylist() {
-        try {
-            // 加上时间戳防止 GitHub Pages 缓存旧列表
-            const response = await fetch(`${CONFIG_URL}?t=${new Date().getTime()}`);
-            if (!response.ok) throw new Error('无法获取列表');
-            
-            // 顺便获取文件的 SHA 供以后修改使用
-            const metaRes = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`);
-            if(metaRes.ok) {
-                const metaData = await metaRes.json();
-                fileSha = metaData.sha;
-                songs = JSON.parse(atob(metaData.content.replace(/\s/g, '')));
-            } else {
-                songs = await response.json();
-            }
-
-            if (songs.length > 0) {
-                renderPlaylist();
-                loadTrack(0);
-            }
-        } catch (error) {
-            console.error(error);
-            currentTitle.innerText = "加载失败，请检查配置";
-        }
-    }
-
-    function renderPlaylist() {
-        playlistContainer.innerHTML = '';
-        songs.forEach((song, index) => {
-            const li = document.createElement('li');
-            li.innerHTML = `<span>${song.title}</span><span class="artist">${song.artist}</span>`;
-            li.addEventListener('click', () => { loadTrack(index); audioPlayer.play(); });
-            playlistContainer.appendChild(li);
-        });
-    }
-
-    function loadTrack(index) {
-        currentIndex = index;
-        const song = songs[index];
-        audioPlayer.src = song.url;
-        currentTitle.innerText = song.title;
-        currentArtist.innerText = song.artist || '未知';
-        
-        const items = playlistContainer.querySelectorAll('li');
-        items.forEach((item, idx) => {
-            idx === index ? item.classList.add('active') : item.classList.remove('active');
-        });
-    }
-
-    audioPlayer.addEventListener('ended', () => {
-        currentIndex = (currentIndex + 1) % songs.length;
-        loadTrack(currentIndex);
-        audioPlayer.play();
-    });
-
-    // 弹窗开关
-    openModalBtn.addEventListener('click', () => {
-        addModal.style.display = addModal.style.display === 'block' ? 'none' : 'block';
-        if(localStorage.getItem('git_token')) {
-            tokenInput.value = localStorage.getItem('git_token');
-        }
-    });
-
-    // 点击添加按钮逻辑
-    submitBtn.addEventListener('click', async () => {
-        const url = urlInput.value.trim();
-        const token = tokenInput.value.trim();
-
-        if(!url || !token) {
-            alert('请完整填写 Token 和 直链地址！');
-            return;
-        }
-
-        localStorage.setItem('git_token', token); // 本地保存token方便下次使用
-        submitBtn.disabled = true;
-        statusHint.innerText = "正在尝试从音乐中解析信息...";
-
-        // 1. 尝试从直链中剥离文件名作为兜底方案
-        let title = url.substring(url.lastIndexOf('/') + 1).replace(/\.[^/.]+$/, "");
-        let artist = "未知歌手";
-
-        // 如果文件名里有 “歌手 - 歌名” 的格式，先拆分
-        if(title.includes('-')) {
-            const parts = title.split('-');
-            artist = parts[0].trim();
-            title = parts[1].trim();
-        }
-
-        // 2. 尝试利用浏览器异步读取音频标签里的真实元数据
-        try {
-            metaParser.src = url;
-            await new Promise((resolve, reject) => {
-                metaParser.onloadedmetadata = () => resolve();
-                metaParser.onerror = () => reject();
-                setTimeout(() => resolve(), 4000); // 4秒超时兜底
-            });
-            
-            // 注意：部分服务器（如catbox）由于跨域限制(CORS)，浏览器可能无法读取内部ID3标签。
-            // 如果读取不到真实标签，就会自动采用上面拆分文件名的兜底方案。
-        } catch (e) {
-            console.log("元数据解析跳过，采用文件名兜底");
-        }
-
-        // 3. 组装新歌曲对象并加入列表
-        const newSong = { title, artist, url };
-        songs.push(newSong);
-
-        statusHint.innerText = "正在同步写入 GitHub...";
-
-        // 4. 调用 GitHub API 覆写文件
-        try {
-            const upRes = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: `Add new song: ${title}`,
-                    content: btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(songs, null, 2)))),                    sha: fileSha
-                })
-            });
-
-            if(upRes.ok) {
-                statusHint.innerText = "添加成功！更新约有十几秒延迟。";
-                urlInput.value = '';
-                setTimeout(() => {
-                    addModal.style.display = 'none';
-                    loadPlaylist();
-                }, 1500);
-            } else {
-                const errData = await upRes.json();
-                throw new Error(errData.message);
-            }
-        } catch (err) {
-            alert('同步失败: ' + err.message);
-            songs.pop(); // 失败则回滚
         } finally {
             submitBtn.disabled = false;
         }
