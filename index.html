@@ -273,11 +273,6 @@
 </div>
 
 <div class="main-content" id="main-content-area">
-    <div class="current-track-summary">
-        <h2 id="current-title">未在播放</h2>
-        <p id="current-artist">请选择歌曲</p>
-    </div>
-    
     <div class="playlist-bubble">
         <div class="playlist-header">播放列表</div>
         <ul class="playlist" id="playlist-container"></ul>
@@ -329,8 +324,6 @@
     const CONFIG_URL = `./${GITHUB_CONFIG.path}`; 
     const audioPlayer = document.getElementById('audio-player');
     const playlistContainer = document.getElementById('playlist-container');
-    const currentTitle = document.getElementById('current-title');
-    const currentArtist = document.getElementById('current-artist');
     
     // 自定义核心控件
     const playBtn = document.getElementById('play-btn');
@@ -405,8 +398,6 @@
         currentIndex = index;
         const song = songs[index];
         audioPlayer.src = song.url;
-        currentTitle.innerText = song.title;
-        currentArtist.innerText = song.artist || '未知';
         
         const items = playlistContainer.querySelectorAll('li');
         items.forEach((item, idx) => {
