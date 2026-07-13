@@ -170,13 +170,84 @@
 
 <div class="add-btn" id="open-modal-btn">+</div>
 
-<div class="modal" id="add-modal">
-    <h3 style="margin-top:0; font-size:1rem;">添加新歌曲</h3>
-    <input type="text" id="token-input" placeholder="GitHub Token (首次需输入)">
-    <input type="text" id="url-input" placeholder="粘贴音乐直链地址">
-    <button id="submit-btn">解析并添加至 GitHub</button>
-    <div class="hint" id="status-hint">自动解析切勿关闭弹窗</div>
-</div>
+// 监听输入框失去焦点，自动尝试解析
+    urlInput.addEventListener('blur', async () => {
+        const url = urlInput.value.trim();
+        if(!url) return;
+        
+        // 兜底拆分文件名
+        let title = url.substring(url.lastIndexOf('/') + 1).replace(/\.[^/.]+$/, "");
+        let artist = "未知歌手";
+        if(title.includes('-')) {
+            const parts = title.split('-');
+            artist = parts[0].trim();
+            title = parts[1].trim();
+        }
+        document.getElementById('title-input').value = title;
+        document.getElementById('artist-input').value = artist;
+
+        // 尝试解析元数据
+        try {
+            metaParser.src = url;
+            // 如果高级标签解析库可用可以在此拓展，此处保持轻量级加载
+        } catch (e) {}
+    });
+
+    // 点击添加按钮逻辑
+    submitBtn.addEventListener('click', async () => {
+        const url = urlInput.value.trim();
+        const token = tokenInput.value.trim();
+        // 获取输入框里的最终名字（允许手动修改）
+        const title = document.getElementById('title-input').value.trim() || "新歌曲";
+        const artist = document.getElementById('artist-input').value.trim() || "未知歌手";
+
+        if(!url || !token) {
+            alert('请完整填写 Token 和 直链地址！');
+            return;
+        }
+
+        localStorage.setItem('git_token', token);
+        submitBtn.disabled = true;
+        statusHint.innerText = "正在同步写入 GitHub...";
+
+        const newSong = { title, artist, url };
+        songs.push(newSong);
+
+        try {
+            const upRes = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: `Add new song: ${title}`,
+                    // ✨ 核心修复：使用标准的 UTF-8 转码方案，彻底解决中文乱码
+                    content: btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(songs, null, 2)))),
+                    sha: fileSha
+                })
+            });
+
+            if(upRes.ok) {
+                statusHint.innerText = "添加成功！更新约有十几秒延迟。";
+                urlInput.value = '';
+                document.getElementById('title-input').value = '';
+                document.getElementById('artist-input').value = '';
+                setTimeout(() => {
+                    addModal.style.display = 'none';
+                    loadPlaylist();
+                }, 1500);
+            } else {
+                const errData = await upRes.json();
+                throw new Error(errData.message);
+            }
+        } catch (err) {
+            alert('同步失败: ' + err.message);
+            songs.pop();
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
 
 <audio id="meta-parser" style="display:none;" preload="metadata"></audio>
 
@@ -326,8 +397,7 @@
                 },
                 body: JSON.stringify({
                     message: `Add new song: ${title}`,
-                    content: btoa(unescape(encodeURIComponent(JSON.stringify(songs, null, 2)))),
-                    sha: fileSha
+                    content: btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(songs, null, 2)))),                    sha: fileSha
                 })
             });
 
