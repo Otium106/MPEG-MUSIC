@@ -23,7 +23,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             min-height: 100vh;
             position: relative;
             overflow: hidden;
@@ -53,33 +53,35 @@
             50% { opacity: 1; }
         }
 
-        /* --- 2. 主体容器（列表置中于网页） --- */
+        /* --- 2. 主体容器（气泡大盘占满全屏，扣除底部控制栏高度） --- */
         .main-content {
-            width: 95%;
-            max-width: 800px; /* 增加大盘宽度 */
+            width: 100vw;
+            height: calc(100vh - 140px); 
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 140px; /* 留出底部播放器的空间 */
             opacity: 0;
             transition: opacity 0.5s ease;
         }
 
-        /* 播放列表独立深色气泡 */
+        /* 播放列表占满屏幕的气泡 */
         .playlist-bubble {
             width: 100%;
+            height: 100%;
             background-color: var(--list-bg);
-            border-radius: 20px;
+            border-radius: 0; /* 既然占满全屏，取消圆角表现更佳 */
             padding: 25px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.6);
             box-sizing: border-box;
             position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* --- 播放列表多列与置顶表头样式 --- */
+        /* --- 播放列表多列与置顶表头样式 (支持长短横向拖动改变匹配长度) --- */
         .table-header {
             display: flex;
-            padding: 10px 15px;
+            padding: 10px 15px 10px 55px; /* 修改：增加左侧 55px 的边距，完美避让左上角按钮 */
             border-bottom: 2px solid #282828;
             color: var(--text-secondary);
             font-size: 0.9rem;
@@ -89,25 +91,28 @@
             background-color: var(--list-bg);
             z-index: 5;
             user-select: none;
+            align-items: center;
         }
         
-        /* 统一控制表头和列表行的三列宽度比例：名称(50%)、演唱者(35%)、时间(15%) */
-        .col-title { flex: 5; text-align: left; padding-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .col-artist { flex: 3.5; text-align: left; padding-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .col-time { flex: 1.5; text-align: right; }
+        /* 允许通过拖动改变宽度的列，增加拖拽边缘提示 */
+        .col-title { width: 50%; min-width: 100px; max-width: 80%; resize: horizontal; overflow: auto; text-align: left; padding-right: 15px; white-space: nowrap; text-overflow: ellipsis; }
+        .col-artist { width: 35%; min-width: 80px; max-width: 60%; resize: horizontal; overflow: auto; text-align: left; padding-right: 15px; white-space: nowrap; text-overflow: ellipsis; }
+        .col-time { flex: 1; text-align: right; min-width: 60px; white-space: nowrap; }
+
+        /* 隐藏由 resize:horizontal 产生的右下角原生丑陋滑块，改用透明边缘供人拖动 */
+        .table-header span::-webkit-scrollbar { width: 4px; height: 0px; }
 
         .sortable { cursor: pointer; transition: color 0.2s; }
         .sortable:hover { color: var(--accent-color); }
         .sort-icon { font-size: 0.75rem; margin-left: 3px; opacity: 0.6; }
 
-        /* 修改原本的 playlist 样式，支持隐藏滚动条 */
+        /* 统一同步列表行中的宽度，跟随表头的宽度改变而自适应 */
         .playlist {
             list-style: none;
             padding: 0;
             margin: 0;
-            max-height: 350px; /* 调高大盘高度 */
+            flex: 1; /* 撑满气泡内部剩余高度 */
             overflow-y: auto;
-            /* 隐藏标准滚动条 */
             -ms-overflow-style: none;  /* IE and Edge */
             scrollbar-width: none;  /* Firefox */
         }
@@ -117,7 +122,7 @@
 
         .playlist li {
             display: flex;
-            padding: 14px 15px;
+            padding: 14px 15px 14px 55px; /* 修改：列表行同步调整左侧边距，保持整体垂直对齐 */
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.2s;
@@ -133,17 +138,32 @@
             background-color: #282828;
             font-weight: bold;
         }
+        
+        /* 列表渲染行的宽度比例与表头动态同步 */
+        .playlist li .col-title { resize: none; overflow: hidden; }
+        .playlist li .col-artist { resize: none; overflow: hidden; }
+        
+        /* 下载图标按钮微调 */
+        .download-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 2px 8px;
+            transition: color 0.2s;
+        }
+        .download-link:hover {
+            color: var(--accent-color);
+        }
 
         /* --- 🔍 右侧向右伸展的搜索抽屉气泡 --- */
         .search-drawer {
             position: absolute;
             top: 0;
-            left: 100%; /* 紧贴主气泡的右侧 */
+            right: 0; /* 改为向内部平铺或紧贴右侧 */
             width: 0; /* 默认宽度为0，隐藏 */
             height: 100%;
             background-color: #202020; /* 略有区分的深色气泡 */
-            border-radius: 0 20px 20px 0; /* 右侧圆角 */
-            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+            box-shadow: -10px 10px 30px rgba(0,0,0,0.5);
             box-sizing: border-box;
             overflow: hidden;
             transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s;
@@ -153,7 +173,7 @@
         }
         /* 抽屉展开状态 */
         .search-drawer.open {
-            width: 280px; /* 向右伸展出 280px */
+            width: 280px; /* 向左展开出 280px */
             padding: 20px;
             border-left: 1px solid #333;
         }
@@ -195,7 +215,7 @@
         /* --- 3. 底部全宽低调播放器 --- */
         .bottom-player {
             position: fixed;
-            bottom: 0; left: 0; width: 100%;
+            bottom: 0; left: 0; width: 100%; height: 140px;
             background-color: var(--bg-color); /* 与背景色完全一致 */
             border-top: 1px solid #222;
             padding: 15px 0 25px 0;
@@ -203,6 +223,7 @@
             flex-direction: column;
             align-items: center;
             z-index: 100;
+            box-sizing: border-box;
         }
         .controls-row {
             display: flex;
@@ -248,7 +269,7 @@
             color: #fff;
         }
 
-        /* 进度条拉长一倍 */
+        /* 进度条 */
         .progress-wrapper {
             width: 90%;
             max-width: 800px;
@@ -300,56 +321,80 @@
             display: none;
         }
 
-        /* --- 4. 气泡抽屉弹窗 --- */
+        /* --- 4. 左上角按钮与左侧弹出一竖列菜单 --- */
         .add-btn {
-            position: fixed; bottom: 130px; left: 20px;
-            width: 45px; height: 45px;
+            position: fixed; top: 15px; left: 15px;
+            width: 40px; height: 40px;
             background-color: #282828; border: 1px solid #404040;
-            color: white; border-radius: 50%;
+            color: white; border-radius: 8px;
             display: flex; justify-content: center; align-items: center;
-            font-size: 24px; cursor: pointer;
+            font-size: 20px; cursor: pointer;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            transition: transform 0.2s;
-            user-select: none; z-index: 101;
+            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
+            user-select: none; z-index: 1002;
         }
-        .add-btn:hover { transform: scale(1.1); color: var(--accent-color); }
+        .add-btn:hover { transform: scale(1.05); color: var(--accent-color); background-color: #333; }
+        
+        /* 修改：菜单弹出后，左上角按钮激活融入背景的专属样式 */
+        .add-btn.open-btn-active {
+            background-color: #1e1e1e; /* 与 .modal 竖列菜单颜色完全一致 */
+            border-color: transparent;  /* 移除边框线 */
+            box-shadow: none;           /* 抹去立体阴影 */
+            transform: none;
+        }
+        
+        /* 竖列抽屉菜单容器 */
         .modal {
-            display: none; position: fixed; bottom: 185px; left: 20px;
-            background: #1e1e1e; border: 1px solid #333;
-            padding: 20px; border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.7);
-            width: 280px; z-index: 1000;
+            display: block; position: fixed; top: 0; left: -320px; /* 默认隐藏在左侧屏幕外 */
+            width: 300px; height: 100vh;
+            background: #1e1e1e; border-right: 1px solid #333;
+            padding: 70px 20px 20px 20px;
+            box-shadow: 8px 0 24px rgba(0,0,0,0.7);
+            z-index: 1001;
+            box-sizing: border-box;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* 菜单拉出显现状态 */
+        .modal.open {
+            left: 0;
         }
         .modal input {
-            width: 92%; padding: 8px; margin-bottom: 10px;
+            width: 100%; padding: 10px; margin-bottom: 15px;
             background: #121212; border: 1px solid #404040;
-            color: white; border-radius: 4px;
+            color: white; border-radius: 6px;
+            box-sizing: border-box;
         }
         .modal button {
             background: var(--accent-color); color: white; border: none;
-            padding: 10px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;
+            padding: 12px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;
         }
-        .modal .hint { font-size: 0.75rem; color: var(--text-secondary); margin-top: 5px; text-align: center; }
+        .modal .hint { font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px; text-align: center; }
     </style>
 </head>
 <body>
 
+<!-- 开场倾斜闪烁 Loading -->
 <div id="page-loading">
     <div class="loading-text">Loading......</div>
 </div>
 
+<!-- 网页正中央内容区 (已修改为铺满全屏尺寸) -->
 <div class="main-content" id="main-content-area">
     <div class="playlist-bubble">
+        <!-- 右上角放大镜图标 -->
         <div id="search-toggle-btn" style="position: absolute; top: 20px; right: 25px; cursor: pointer; font-size: 1.2rem; z-index: 10; user-select: none;">🔍</div>
         
+        <!-- 表头：支持点击排序与边缘拖拉长短 -->
         <div class="table-header">
             <span class="col-title sortable" id="sort-title">歌曲名称 <span class="sort-icon">↕</span></span>
             <span class="col-artist sortable" id="sort-artist">演唱者 <span class="sort-icon">↕</span></span>
-            <span class="col-time sortable" id="sort-time">时长 <span class="sort-icon">↕</span></span>
+            <span class="col-time sortable" id="sort-time">下载 <span class="sort-icon">↕</span></span>
         </div>
         
+        <!-- 歌曲列表容器 -->
         <ul class="playlist" id="playlist-container"></ul>
 
+        <!-- 🔍 右侧内嵌搜索抽屉 -->
         <div class="search-drawer" id="search-drawer">
             <input type="text" id="search-input" placeholder="输入歌曲名或演唱者...">
             <ul class="search-results" id="search-results-container"></ul>
@@ -364,6 +409,7 @@
     <span id="current-artist"></span>
 </div>
 
+<!-- 底部控制栏 -->
 <div class="bottom-player">
     <div class="controls-row">
         <button class="ctrl-btn" id="random-btn">随机播放</button>
@@ -386,9 +432,11 @@
     </div>
 </div>
 
-<div class="add-btn" id="open-modal-btn">+</div>
+<!-- 左上角功能按钮 -->
+<div class="add-btn" id="open-modal-btn">☰</div>
+<!-- 左侧弹出的竖列菜单 -->
 <div class="modal" id="add-modal">
-    <h3 style="margin-top:0; font-size:1rem;">添加新歌曲</h3>
+    <h3 style="margin-top:0; font-size:1.1rem; margin-bottom: 20px;">添加新歌曲</h3>
     <input type="text" id="token-input" placeholder="GitHub Token (首次需输入)">
     <input type="text" id="url-input" placeholder="粘贴音乐直链地址">
     <input type="text" id="title-input" placeholder="歌曲名称 (自动解析/可手动修改)">
@@ -398,7 +446,6 @@
 </div>
 
 <script>
-    // 自动抓取你原本文件内的配置信息
     const GITHUB_CONFIG = {
         owner: 'Otium106', 
         repo: 'MPEG-MUSIC',       
@@ -411,7 +458,6 @@
     const currentTitle = document.getElementById('current-title');
     const currentArtist = document.getElementById('current-artist');
     
-    // 自定义核心按钮与条件
     const playBtn = document.getElementById('play-btn');
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
@@ -434,7 +480,19 @@
     let isRandom = false;
     let sortDirections = { title: 1, artist: 1, time: 1 };
 
-    // 载入播放列表与解除 Loading 动画
+    // 监听表头列长短拖动，动态同步给渲染的列表项宽度
+    const headerTitle = document.querySelector('.table-header .col-title');
+    const headerArtist = document.querySelector('.table-header .col-artist');
+    
+    const resizeObserver = new ResizeObserver(() => {
+        const titleWidth = headerTitle.style.width || '50%';
+        const artistWidth = headerArtist.style.width || '35%';
+        document.querySelectorAll('.playlist li .col-title').forEach(el => el.style.width = titleWidth);
+        document.querySelectorAll('.playlist li .col-artist').forEach(el => el.style.width = artistWidth);
+    });
+    resizeObserver.observe(headerTitle);
+    resizeObserver.observe(headerArtist);
+
     async function loadPlaylist() {
         try {
             const metaRes = await fetch(`https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}?t=${new Date().getTime()}`);
@@ -458,7 +516,6 @@
             console.error(error);
             songs = [];
         } finally {
-            // 解除动画，优雅淡入显示主大盘
             document.getElementById('page-loading').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('page-loading').style.display = 'none';
@@ -467,20 +524,26 @@
         }
     }
 
-    // 三列式大盘渲染
+    // 修改为 名称、演唱者、下载
     function renderPlaylist() {
         playlistContainer.innerHTML = '';
+        const titleWidth = headerTitle.style.width || '50%';
+        const artistWidth = headerArtist.style.width || '35%';
+
         songs.forEach((song, index) => {
             const li = document.createElement('li');
-            const durationText = song.duration || "--:--"; 
             
             li.innerHTML = `
-                <span class="col-title">${song.title}</span>
-                <span class="col-artist">${song.artist}</span>
-                <span class="col-time">${durationText}</span>
+                <span class="col-title" style="width: ${titleWidth}">${song.title}</span>
+                <span class="col-artist" style="width: ${artistWidth}">${song.artist}</span>
+                <span class="col-time">
+                    <a href="${song.url}" target="_blank" class="download-link" title="下载歌曲">📥</a>
+                </span>
             `;
             
-            li.addEventListener('click', () => { 
+            // 点击整行切换歌曲（排除点击下载按钮触发切歌）
+            li.addEventListener('click', (e) => { 
+                if(e.target.classList.contains('download-link')) return;
                 loadTrack(index); 
                 playTrack();
             });
@@ -503,7 +566,6 @@
         resetProgressBar();
     }
 
-    // 控制核心
     function togglePlay() {
         if(songs.length === 0) return;
         if(audioPlayer.paused) { playTrack(); } else { pauseTrack(); }
@@ -548,7 +610,6 @@
         randomBtn.classList.toggle('toggle-active', isRandom);
     });
 
-    // 排序控制中心
     function sortPlaylist(field) {
         if (!songs || songs.length === 0) return;
         const currentPlayingUrl = songs[currentIndex]?.url;
@@ -571,9 +632,8 @@
 
     document.getElementById('sort-title').addEventListener('click', () => sortPlaylist('title'));
     document.getElementById('sort-artist').addEventListener('click', () => sortPlaylist('artist'));
-    document.getElementById('sort-time').addEventListener('click', () => sortPlaylist('time'));
+    document.getElementById('sort-time').addEventListener('click', () => sortPlaylist('title')); // 下载列复用按名称排序
 
-    // 进度与时间辅助函数
     function formatTime(secs) {
         if(isNaN(secs)) return "00:00";
         let min = Math.floor(secs / 60);
@@ -608,7 +668,7 @@
 
     audioPlayer.addEventListener('ended', nextTrack);
 
-    // 🔍 搜索抽屉逻辑绑定
+    // 🔍 搜索逻辑
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchDrawer = document.getElementById('search-drawer');
     const searchInput = document.getElementById('search-input');
@@ -650,10 +710,18 @@
     }
     searchInput.addEventListener('input', performSearch);
 
-    // 弹窗表单交互
-    openModalBtn.addEventListener('click', async () => {
-        addModal.style.display = addModal.style.display === 'block' ? 'none' : 'block';
+    // 左上角一竖列菜单交互 (已修改：支持控制左上角按钮融入背景)
+    openModalBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        addModal.classList.toggle('open');
+        openModalBtn.classList.toggle('open-btn-active', addModal.classList.contains('open'));
         if(localStorage.getItem('git_token')) { tokenInput.value = localStorage.getItem('git_token'); }
+    });
+    
+    addModal.addEventListener('click', (e) => e.stopPropagation());
+    document.addEventListener('click', () => {
+        addModal.classList.remove('open');
+        openModalBtn.classList.remove('open-btn-active');
     });
 
     urlInput.addEventListener('blur', () => {
@@ -705,7 +773,11 @@
                 urlInput.value = '';
                 document.getElementById('title-input').value = '';
                 document.getElementById('artist-input').value = '';
-                setTimeout(() => { addModal.style.display = 'none'; loadPlaylist(); }, 1500);
+                setTimeout(() => { 
+                    addModal.classList.remove('open'); 
+                    openModalBtn.classList.remove('open-btn-active');
+                    loadPlaylist(); 
+                }, 1500);
             } else { throw new Error((await upRes.json()).message); }
         } catch (err) { alert('同步失败: ' + err.message); songs.pop(); } finally { submitBtn.disabled = false; }
     });
