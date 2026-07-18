@@ -254,13 +254,19 @@
             color: var(--accent-color);
             background-color: #222;
         }
+        /* 修改：按钮点击反馈效果 */
+        .ctrl-btn:active {
+            transform: scale(0.92);
+        }
+        /* 修改：激活时赋予一个亮一些的背景 */
         .ctrl-btn.toggle-active {
             color: var(--accent-color);
             font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         /* 修改：把图标图片的高度由 20px 放大至 32px */
         .ctrl-btn img, .volume-container img {
-            height: 80px; 
+            height: 32px; 
             width: auto;
             display: block;
         }
@@ -277,6 +283,10 @@
         #play-btn:hover {
             background-color: var(--accent-color);
             color: #fff;
+        }
+        /* 确保主播放按钮在点击时不发生额外不谐调的变形 */
+        #play-btn:active {
+            transform: scale(0.95);
         }
 
         input[type="range"] {
@@ -326,6 +336,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
             user-select: none; z-index: 1002;
+            overflow: hidden; /* 保证内部图片完美契合圆角 */
         }
         .add-btn:hover { transform: scale(1.05); color: var(--accent-color); background-color: #333; }
         
@@ -418,8 +429,8 @@
     </div>
 </div>
 
-<!-- 左上角功能按钮 -->
-<div class="add-btn" id="open-modal-btn">☰</div>
+<!-- 左上角功能按钮 修改：将文字改为 certificate.png 图片 -->
+<div class="add-btn" id="open-modal-btn"><img src="./images/certificate.png" alt="菜单" style="height: 24px; width: auto; display: block;"></div>
 <!-- 左侧弹出的竖列菜单 -->
 <div class="modal" id="add-modal">
     <h3 style="margin-top:0; font-size:1.1rem; margin-bottom: 20px;">添加新歌曲</h3>
