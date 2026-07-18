@@ -1,58 +1,8 @@
 [
   {
-    "title": "今晩の喧嘩",
-    "artist": "名誉伝説",
-    "url": "https://files.catbox.moe/kqwss2.flac"
-  },
-  {
-    "title": "only my railgun",
-    "artist": "fripSide",
-    "url": "https://files.catbox.moe/2wd3l7.flac"
-  },
-  {
-    "title": "スパークライフ",
-    "artist": "プリケツ (CV.大地葉)",
-    "url": "https://files.catbox.moe/moublw.flac"
-  },
-  {
-    "title": "なんかフワッとした歌詞の前向きなポップソング",
-    "artist": "サラ・ダ・オディン (CV.矢野妃菜喜)",
-    "url": "https://files.catbox.moe/85rez0.flac"
-  },
-  {
-    "title": "終わりの世界から",
-    "artist": "やなぎなぎ",
-    "url": "https://files.catbox.moe/vb6jr8.flac"
-  },
-  {
     "title": "レタスとキャベツ",
     "artist": "サラ・ダ・オディン (CV.矢野妃菜喜)",
     "url": "https://files.catbox.moe/aebvc1.flac"
-  },
-  {
-    "title": "独断の心",
-    "artist": "プリケツ (CV.大地葉)",
-    "url": "https://files.catbox.moe/b4cl2y.flac"
-  },
-  {
-    "title": "将军の交响曲",
-    "artist": "AI",
-    "url": "https://files.catbox.moe/2caitf.mp3"
-  },
-  {
-    "title": "Samurai 45",
-    "artist": "MIYAVI",
-    "url": "https://files.catbox.moe/s54438.flac"
-  },
-  {
-    "title": "革命道中",
-    "artist": "アイナ・ジ・エンド",
-    "url": "https://files.catbox.moe/qi838p.flac"
-  },
-  {
-    "title": "moment",
-    "artist": "Vivian or Kazuma",
-    "url": "https://files.catbox.moe/m6iroj.flac"
   },
   {
     "title": "ミスターフィクサー",
@@ -60,9 +10,34 @@
     "url": "https://files.catbox.moe/zx291h.flac"
   },
   {
+    "title": "なんかフワッとした歌詞の前向きなポップソング",
+    "artist": "サラ・ダ・オディン (CV.矢野妃菜喜)",
+    "url": "https://files.catbox.moe/85rez0.flac"
+  },
+  {
+    "title": "スパークライフ",
+    "artist": "プリケツ (CV.大地葉)",
+    "url": "https://files.catbox.moe/moublw.flac"
+  },
+  {
+    "title": "Samurai 45",
+    "artist": "MIYAVI",
+    "url": "https://files.catbox.moe/s54438.flac"
+  },
+  {
     "title": "Other Side",
     "artist": "MIYAVI",
     "url": "https://files.catbox.moe/4gt6m9.flac"
+  },
+  {
+    "title": "only my railgun",
+    "artist": "fripSide",
+    "url": "https://files.catbox.moe/2wd3l7.flac"
+  },
+  {
+    "title": "moment",
+    "artist": "Vivian or Kazuma",
+    "url": "https://files.catbox.moe/m6iroj.flac"
   },
   {
     "title": "LOVE & ROLL",
@@ -70,14 +45,19 @@
     "url": "https://files.catbox.moe/8r2ych.flac"
   },
   {
-    "title": "君の知らない物語",
-    "artist": "supercell",
-    "url": "https://files.catbox.moe/rw5pt2.flac"
-  },
-  {
     "title": "God knows...",
     "artist": "平野綾",
     "url": "https://files.catbox.moe/enmpkw.flac"
+  },
+  {
+    "title": "終わりの世界から",
+    "artist": "やなぎなぎ",
+    "url": "https://files.catbox.moe/vb6jr8.flac"
+  },
+  {
+    "title": "時を刻む唄",
+    "artist": "Lia",
+    "url": "https://files.catbox.moe/j616wf.flac"
   },
   {
     "title": "鳥の詩",
@@ -85,8 +65,33 @@
     "url": "https://files.catbox.moe/13b0w1.flac"
   },
   {
-    "title": "時を刻む唄",
-    "artist": "Lia",
-    "url": "https://files.catbox.moe/j616wf.flac"
+    "title": "君の知らない物語",
+    "artist": "supercell",
+    "url": "https://files.catbox.moe/rw5pt2.flac"
+  },
+  {
+    "title": "今晩の喧嘩",
+    "artist": "名誉伝説",
+    "url": "https://files.catbox.moe/kqwss2.flac"
+  },
+  {
+    "title": "将军の交响曲",
+    "artist": "AI",
+    "url": "https://files.catbox.moe/2caitf.mp3"
+  },
+  {
+    "title": "革命道中",
+    "artist": "アイナ・ジ・エンド",
+    "url": "https://files.catbox.moe/qi838p.flac"
+  },
+  {
+    "title": "独断の心",
+    "artist": "プリケツ (CV.大地葉)",
+    "url": "https://files.catbox.moe/b4cl2y.flac"
+  },
+  {
+    "title": "コネクト",
+    "artist": "ClariS",
+    "url": "https://files.catbox.moe/um3sgp.flac"
   }
 ]
