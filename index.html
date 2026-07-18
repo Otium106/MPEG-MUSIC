@@ -266,27 +266,84 @@
         }
         /* 修改：把图标图片的高度由 20px 放大至 32px */
         .ctrl-btn img, .volume-container img {
-            height: 80px; 
+            height: 32px; 
             width: auto;
             display: block;
         }
+
+        /* ==========================================================================
+           🎵 新增/替换：高亮创意“奏/歇”斜线播放按钮核心样式
+           ========================================================================== */
         #play-btn {
-            font-size: 1.3rem; /* 修改：同步略微调大播放按钮内的特殊符号 */
-            font-weight: bold;
-            background-color: #fff;
-            color: #000;
+            width: 55px; height: 55px; /* 对齐原有 50px 左右设计，给予舒适的大小 */
             border-radius: 50%;
-            width: 50px; height: 50px; /* 修改：播放按钮从 45px 调整为 50px 完美对齐新图标 */
-            display: flex; align-items: center; justify-content: center;
+            border: 2px solid #fff; /* 适配黑色背景，改为白线框 */
+            background: #000; /* 纯黑背景配合播放器 */
+            position: relative;
+            cursor: pointer;
+            overflow: hidden; /* 保证干净的圆形边缘，未激活的字不会超出 */
+            outline: none;
             padding: 0;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            flex-shrink: 0;
         }
         #play-btn:hover {
-            background-color: var(--accent-color);
-            color: #fff;
+            transform: scale(1.05);
+            border-color: var(--accent-color);
         }
-        /* 确保主播放按钮在点击时不发生额外不谐调的变形 */
         #play-btn:active {
             transform: scale(0.95);
+        }
+
+        /* 中间的分割斜线（右上到左下） */
+        .diagonal-line {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 141.4%;
+            height: 2px;
+            background: #fff;
+            transform: rotate(45deg);
+            transform-origin: top right;
+            z-index: 2; /* 介于层级 1 与层级 3 之间 */
+        }
+
+        .char-img {
+            position: absolute;
+            width: 26px;  /* 适配 55px 按钮的字模大小 */
+            height: auto;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            z-index: 1;
+        }
+
+        /* 状态 1：播放中（“奏”字居中放大，“歇”字退缩到右下角并变淡） */
+        #play-btn.is-playing .zou {
+            transform: translate(-50%, -50%) scale(1.4);
+            filter: drop-shadow(0px 2px 4px rgba(255,255,255,0.2));
+            z-index: 3;
+            opacity: 1;
+        }
+        #play-btn.is-playing .xie {
+            transform: translate(calc(-50% + 9px), calc(-50% + 9px)) scale(0.65);
+            opacity: 0.25;
+            z-index: 1;
+        }
+
+        /* 状态 2：暂停中（“歇”字居中放大，“奏”字退缩到左上角并变淡） */
+        #play-btn.is-paused .xie {
+            transform: translate(-50%, -50%) scale(1.4);
+            filter: drop-shadow(0px 2px 4px rgba(255,255,255,0.2));
+            z-index: 3;
+            opacity: 1;
+        }
+        #play-btn.is-paused .zou {
+            transform: translate(calc(-50% - 9px), calc(-50% - 9px)) scale(0.65);
+            opacity: 0.25;
+            z-index: 1;
         }
 
         input[type="range"] {
@@ -419,7 +476,14 @@
     <div class="controls-row">
         <button class="ctrl-btn" id="random-btn"><img src="./images/shuffleplay.png" alt="随机播放"></button>
         <button class="ctrl-btn" id="prev-btn"><img src="./images/before.png" alt="上一首"></button>
-        <button class="ctrl-btn" id="play-btn">▶</button>
+        
+        <!-- 修改：更改为包含斜线及奏/歇字模图的创意播放/暂停按钮结构 -->
+        <button id="play-btn" class="is-paused">
+            <div class="diagonal-line"></div>
+            <img src="./images/play.png" alt="奏" class="char-img zou">
+            <img src="./images/rest.png" alt="歇" class="char-img xie">
+        </button>
+        
         <button class="ctrl-btn" id="next-btn"><img src="./images/after.png" alt="下一首"></button>
         
         <div class="volume-container">
@@ -429,8 +493,8 @@
     </div>
 </div>
 
-<!-- 左上角功能按钮 修改：将文字改为 certificate.png 图片 -->
-<div class="add-btn" id="open-modal-btn"><img src="./images/certificate.png" alt="菜单" style="height: 50px; width: auto; display: block;"></div>
+<!-- 左上角功能按钮 -->
+<div class="add-btn" id="open-modal-btn"><img src="./images/certificate.png" alt="菜单" style="height: 24px; width: auto; display: block;"></div>
 <!-- 左侧弹出的竖列菜单 -->
 <div class="modal" id="add-modal">
     <h3 style="margin-top:0; font-size:1.1rem; margin-bottom: 20px;">添加新歌曲</h3>
@@ -566,13 +630,17 @@
         if(songs.length === 0) return;
         if(audioPlayer.paused) { playTrack(); } else { pauseTrack(); }
     }
+    
+    // 修改：将文本切换改写为更炫酷的“奏/歇”类名交互变换逻辑
     function playTrack() {
         audioPlayer.play();
-        playBtn.innerText = '⏸';
+        playBtn.classList.remove('is-paused');
+        playBtn.classList.add('is-playing');
     }
     function pauseTrack() {
         audioPlayer.pause();
-        playBtn.innerText = '▶';
+        playBtn.classList.remove('is-playing');
+        playBtn.classList.add('is-paused');
     }
 
     function nextTrack() {
