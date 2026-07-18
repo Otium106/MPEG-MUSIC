@@ -56,7 +56,7 @@
         /* --- 2. 主体容器（气泡大盘占满全屏，扣除底部控制栏高度） --- */
         .main-content {
             width: 100vw;
-            height: calc(100vh - 80px); /* 修改：高度适配降低后的底部播放器（140px -> 80px） */
+            height: calc(100vh - 100px); /* 修改：高度从 80px 调整为 100px 适配新的播放器高度 */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -215,14 +215,14 @@
         /* --- 3. 底部全宽低调播放器 --- */
         .bottom-player {
             position: fixed;
-            bottom: 0; left: 0; width: 100%; height: 80px; /* 修改：高度由 140px 降低为 80px */
+            bottom: 0; left: 0; width: 100%; height: 100px; /* 修改：为了适配放大后的图标，高度由 80px 略微调整到 100px */
             background-color: var(--bg-color); /* 与背景色完全一致 */
             border-top: 1px solid #222;
-            padding: 15px 0; /* 修改：精简上下内边距 */
+            padding: 15px 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center; /* 修改：让内容居中分布 */
+            justify-content: center;
             z-index: 100;
             box-sizing: border-box;
         }
@@ -230,10 +230,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
+            gap: 24px; /* 修改：略微加宽组件间距，避免大图标显得拥挤 */
             width: 90%;
-            max-width: 600px;
-            margin-bottom: 0; /* 修改：移除了原先预留给进度条的底部边距 */
+            max-width: 650px;
+            margin-bottom: 0;
         }
         /* 核心控制按钮 */
         .ctrl-btn {
@@ -242,7 +242,7 @@
             color: var(--text-color);
             font-size: 1rem;
             cursor: pointer;
-            padding: 8px 14px;
+            padding: 8px 12px;
             border-radius: 5px;
             transition: all 0.2s;
             user-select: none;
@@ -258,19 +258,19 @@
             color: var(--accent-color);
             font-weight: bold;
         }
-        /* 为替换的图片图标配置统一的显示比例 */
+        /* 修改：把图标图片的高度由 20px 放大至 32px */
         .ctrl-btn img, .volume-container img {
-            height: 20px; 
+            height: 32px; 
             width: auto;
             display: block;
         }
         #play-btn {
-            font-size: 1.2rem;
+            font-size: 1.3rem; /* 修改：同步略微调大播放按钮内的特殊符号 */
             font-weight: bold;
             background-color: #fff;
             color: #000;
             border-radius: 50%;
-            width: 45px; height: 45px;
+            width: 50px; height: 50px; /* 修改：播放按钮从 45px 调整为 50px 完美对齐新图标 */
             display: flex; align-items: center; justify-content: center;
             padding: 0;
         }
@@ -305,10 +305,10 @@
         .volume-container {
             display: flex;
             align-items: center;
-            gap: 8px;
-            width: 110px;
+            gap: 10px;
+            width: 120px; /* 修改：略微加宽适配放大后的音量图标 */
         }
-        .volume-container input[type="range"] { width: 60px; }
+        .volume-container input[type="range"] { width: 65px; }
 
         /* 原生控件隐藏 */
         audio {
@@ -406,7 +406,6 @@
 <!-- 底部控制栏 -->
 <div class="bottom-player">
     <div class="controls-row">
-        <!-- 修改：文字已替换为指定路径下的图片 -->
         <button class="ctrl-btn" id="random-btn"><img src="./images/shuffleplay.png" alt="随机播放"></button>
         <button class="ctrl-btn" id="prev-btn"><img src="./images/before.png" alt="上一首"></button>
         <button class="ctrl-btn" id="play-btn">▶</button>
@@ -417,7 +416,6 @@
             <input type="range" id="volume-bar" value="100" min="0" max="100">
         </div>
     </div>
-    <!-- 修改：已删除原先的进度条 progress-wrapper 容器 -->
 </div>
 
 <!-- 左上角功能按钮 -->
@@ -452,7 +450,7 @@
     const randomBtn = document.getElementById('random-btn');
     const volumeBar = document.getElementById('volume-bar');
 
-    // 由于删除了进度条相关的 DOM 元素，将变量直接映射为假对象，防止后续原生业务逻辑报错
+    // 映射假对象，维持原有播放器框架逻辑不崩塌
     const progressBar = { value: 0 };
     const timeCurrent = { innerText: "" };
     const timeTotal = { innerText: "" };
@@ -470,7 +468,6 @@
     let isRandom = false;
     let sortDirections = { title: 1, artist: 1, time: 1 };
 
-    // 监听表头列长短拖动，动态同步给渲染的列表项宽度
     const headerTitle = document.querySelector('.table-header .col-title');
     const headerArtist = document.querySelector('.table-header .col-artist');
     
