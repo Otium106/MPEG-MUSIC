@@ -216,9 +216,28 @@
         /* 上下首缩放反馈 */
         .scale-btn:active { transform: scale(0.85); }
 
+        
+        .control-btn img{
+            width:28px;
+            height:28px;
+            object-fit:contain;
+        }
+        #play-btn img{
+            width:40px;
+            height:40px;
+            transition: transform 0.3s ease;
+        }
+        #shuffle-btn img,
+        #prev-btn img,
+        #next-btn img,
+        #volume-btn img{
+            width:26px;
+            height:26px;
+        }
+
         /* 播放/暂停旋转 */
         #play-btn img { transition: transform 0.3s ease; }
-        #play-btn.playing-state img { transform: rotate(-90deg); }
+        #play-btn.playing-state img { transform: rotateY(180deg); }
 
         /* 进度条区域 */
         .progress-container {
