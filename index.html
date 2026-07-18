@@ -56,7 +56,7 @@
         /* --- 2. 主体容器（气泡大盘占满全屏，扣除底部控制栏高度） --- */
         .main-content {
             width: 100vw;
-            height: calc(100vh - 140px); 
+            height: calc(100vh - 80px); /* 修改：高度适配降低后的底部播放器（140px -> 80px） */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -215,13 +215,14 @@
         /* --- 3. 底部全宽低调播放器 --- */
         .bottom-player {
             position: fixed;
-            bottom: 0; left: 0; width: 100%; height: 140px;
+            bottom: 0; left: 0; width: 100%; height: 80px; /* 修改：高度由 140px 降低为 80px */
             background-color: var(--bg-color); /* 与背景色完全一致 */
             border-top: 1px solid #222;
-            padding: 15px 0 25px 0;
+            padding: 15px 0; /* 修改：精简上下内边距 */
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center; /* 修改：让内容居中分布 */
             z-index: 100;
             box-sizing: border-box;
         }
@@ -232,7 +233,7 @@
             gap: 20px;
             width: 90%;
             max-width: 600px;
-            margin-bottom: 16px;
+            margin-bottom: 0; /* 修改：移除了原先预留给进度条的底部边距 */
         }
         /* 核心控制按钮 */
         .ctrl-btn {
@@ -245,6 +246,9 @@
             border-radius: 5px;
             transition: all 0.2s;
             user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .ctrl-btn:hover {
             color: var(--accent-color);
@@ -253,6 +257,12 @@
         .ctrl-btn.toggle-active {
             color: var(--accent-color);
             font-weight: bold;
+        }
+        /* 为替换的图片图标配置统一的显示比例 */
+        .ctrl-btn img, .volume-container img {
+            height: 20px; 
+            width: auto;
+            display: block;
         }
         #play-btn {
             font-size: 1.2rem;
@@ -269,22 +279,6 @@
             color: #fff;
         }
 
-        /* 进度条 */
-        .progress-wrapper {
-            width: 90%;
-            max-width: 800px;
-            margin-bottom: 8px;
-        }
-        .progress-wrapper .slider-container { width: 100%; }
-
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-        
         input[type="range"] {
             flex: 1;
             -webkit-appearance: none;
@@ -311,8 +305,8 @@
         .volume-container {
             display: flex;
             align-items: center;
-            gap: 5px;
-            width: 100px;
+            gap: 8px;
+            width: 110px;
         }
         .volume-container input[type="range"] { width: 60px; }
 
@@ -378,7 +372,7 @@
     <div class="loading-text">Loading......</div>
 </div>
 
-<!-- 网页正中央内容区 (已修改为铺满全屏尺寸) -->
+<!-- 网页正中央内容区 -->
 <div class="main-content" id="main-content-area">
     <div class="playlist-bubble">
         <!-- 右上角放大镜图标 -->
@@ -412,24 +406,18 @@
 <!-- 底部控制栏 -->
 <div class="bottom-player">
     <div class="controls-row">
-        <button class="ctrl-btn" id="random-btn">随机播放</button>
-        <button class="ctrl-btn" id="prev-btn">上一首</button>
+        <!-- 修改：文字已替换为指定路径下的图片 -->
+        <button class="ctrl-btn" id="random-btn"><img src="./images/shuffleplay.png" alt="随机播放"></button>
+        <button class="ctrl-btn" id="prev-btn"><img src="./images/before.png" alt="上一首"></button>
         <button class="ctrl-btn" id="play-btn">▶</button>
-        <button class="ctrl-btn" id="next-btn">下一首</button>
+        <button class="ctrl-btn" id="next-btn"><img src="./images/after.png" alt="下一首"></button>
         
         <div class="volume-container">
-            <span style="font-size:0.8rem;">音量</span>
+            <img src="./images/volume.png" alt="音量">
             <input type="range" id="volume-bar" value="100" min="0" max="100">
         </div>
     </div>
-
-    <div class="progress-wrapper">
-        <div class="slider-container">
-            <span id="time-current">00:00</span>
-            <input type="range" id="progress-bar" value="0" min="0" max="100">
-            <span id="time-total">00:00</span>
-        </div>
-    </div>
+    <!-- 修改：已删除原先的进度条 progress-wrapper 容器 -->
 </div>
 
 <!-- 左上角功能按钮 -->
@@ -462,10 +450,12 @@
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const randomBtn = document.getElementById('random-btn');
-    const progressBar = document.getElementById('progress-bar');
     const volumeBar = document.getElementById('volume-bar');
-    const timeCurrent = document.getElementById('time-current');
-    const timeTotal = document.getElementById('time-total');
+
+    // 由于删除了进度条相关的 DOM 元素，将变量直接映射为假对象，防止后续原生业务逻辑报错
+    const progressBar = { value: 0 };
+    const timeCurrent = { innerText: "" };
+    const timeTotal = { innerText: "" };
 
     const addModal = document.getElementById('add-modal');
     const openModalBtn = document.getElementById('open-modal-btn');
@@ -524,7 +514,6 @@
         }
     }
 
-    // 修改为 名称、演唱者、下载
     function renderPlaylist() {
         playlistContainer.innerHTML = '';
         const titleWidth = headerTitle.style.width || '50%';
@@ -541,7 +530,6 @@
                 </span>
             `;
             
-            // 点击整行切换歌曲（排除点击下载按钮触发切歌）
             li.addEventListener('click', (e) => { 
                 if(e.target.classList.contains('download-link')) return;
                 loadTrack(index); 
@@ -632,7 +620,7 @@
 
     document.getElementById('sort-title').addEventListener('click', () => sortPlaylist('title'));
     document.getElementById('sort-artist').addEventListener('click', () => sortPlaylist('artist'));
-    document.getElementById('sort-time').addEventListener('click', () => sortPlaylist('title')); // 下载列复用按名称排序
+    document.getElementById('sort-time').addEventListener('click', () => sortPlaylist('title'));
 
     function formatTime(secs) {
         if(isNaN(secs)) return "00:00";
@@ -653,12 +641,6 @@
             progressBar.value = pct;
             timeCurrent.innerText = formatTime(audioPlayer.currentTime);
             timeTotal.innerText = formatTime(audioPlayer.duration);
-        }
-    });
-
-    progressBar.addEventListener('input', () => {
-        if(audioPlayer.duration) {
-            audioPlayer.currentTime = (progressBar.value / 100) * audioPlayer.duration;
         }
     });
 
@@ -710,7 +692,7 @@
     }
     searchInput.addEventListener('input', performSearch);
 
-    // 左上角一竖列菜单交互 (已修改：支持控制左上角按钮融入背景)
+    // 左上角一竖列菜单交互
     openModalBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         addModal.classList.toggle('open');
